@@ -94,3 +94,79 @@
 @media (max-width: 860px) { .manual-app-shell { grid-template-columns: 1fr; }.manual-sidebar { display: none; }.manual-grid, .manual-result-columns, .manual-purpose-grid { grid-template-columns: 1fr; }.manual-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }.manual-top-note { display: none; } }
 @media (max-width: 560px) { .manual-shell { padding: 15px 12px 45px; }.manual-intro, .manual-card, .manual-results { padding: 19px; }.manual-fields, .manual-kpis, .manual-correction-grid { grid-template-columns: 1fr; }.manual-stepbar { top: 72px; margin: -15px -12px 15px; padding: 8px; gap: 3px; }.manual-stepbar button { font-size: 12px; padding: 8px 3px; } }
 @media print { .manual-page .topbar, .manual-sidebar, .manual-stepbar, .manual-print, [data-manual-page]:not([data-manual-page="opinion"]) { display: none !important; }.manual-app-shell { display: block; }.manual-shell { max-width: none; padding: 0; }.manual-results { border: 0; box-shadow: none; } }
+
+/* Keep the private-company workbench in the same visual system as the public-filings page. */
+.manual-page { background: var(--paper); color: var(--ink); }
+.manual-app-shell { max-width: 1960px; grid-template-columns: 214px minmax(0, 1fr); }
+.manual-sidebar { top: 72px; }
+.manual-shell { max-width: none; margin: 0; padding: 0 26px 72px; }
+.manual-stepbar { position: sticky; top: 72px; z-index: 22; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0 -26px 15px; padding: 11px 26px; gap: 9px; border-bottom: 1px solid #e5eaf0; background: rgba(247, 249, 252, .97); backdrop-filter: blur(8px); }
+.manual-stepbar button { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 50px; padding: 10px; border: 1px solid #e3eaf2; border-radius: 11px; background: #fff; color: #596775; font-size: 15px; font-weight: 700; }
+.manual-stepbar button b { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; background: #f0f3f7; color: #5e7084; font-size: 13px; }
+.manual-stepbar button.active { border-color: #aacef8; background: #e8f3ff; color: #1765d1; }
+.manual-stepbar button.active b { background: #3182f6; color: #fff; }
+.manual-hero { margin-top: 16px; }
+.manual-detail-links { margin: 16px 0 12px; }
+.manual-detail-links a { display: flex; flex-direction: column; justify-content: center; gap: 2px; min-height: 70px; padding: 11px 16px; border: 1px solid #e1e9f1; border-radius: 12px; background: #fff; color: #333d49; font-size: 17px; font-weight: 750; text-decoration: none; }
+.manual-detail-links a:hover { border-color: #aacef8; background: #e8f3ff; color: #1765d1; }
+.manual-detail-links a small { color: #708090; font-size: 13px; font-weight: 500; }
+.manual-grid { grid-template-columns: minmax(0, 1.68fr) minmax(300px, .66fr); gap: 16px; margin-top: 0; }
+.manual-card.inquiry-card { display: block; padding: 27px 30px; }
+.manual-card-heading { display: flex; justify-content: space-between; align-items: center; gap: 18px; margin-bottom: 16px; padding-bottom: 19px; border-bottom: 1px solid #eef1f4; }
+.manual-card-heading h2 { margin: 0; color: #191f28; font-size: clamp(24px, 2vw, 29px); line-height: 1.25; }
+.manual-card-heading p { margin: 5px 0 0; color: #667484; }
+.manual-card-heading .text-button { flex: 0 0 auto; }
+.manual-guide { padding: 27px 30px; }
+.manual-guide h2 { margin: 0; }
+.manual-guide ol { list-style: none; padding: 0; }
+.manual-guide li { padding: 12px 0 12px 37px; }
+.manual-guide-note { padding-top: 14px; border-top: 1px solid #e9edf2; }
+.manual-guide-note strong { color: #333d49; font-size: 15px; }
+.manual-guide-note p { color: #647180; font-size: 14px; }
+.manual-fields label { color: #333d49; }
+.manual-fields input, .manual-fields select { border-color: #dce3eb; color: #191f28; }
+.manual-file { border-color: #e5eaf0; background: #fbfcfe; }
+.manual-file b { color: #333d49; }
+.manual-transfer-note { margin: 11px 0 15px; padding: 10px 13px; border: 0; border-left: 3px solid #86b7f2; border-radius: 4px 8px 8px 4px; background: #f4f8fe; color: #52667e; font-size: 13px; }
+.manual-section-head { margin-top: 18px; padding: 19px 25px; border-color: #e5eaf0; background: #fff; }
+.manual-section-head h1, .manual-section-head h2 { margin: 2px 0; color: #191f28; font-size: 27px; }
+.manual-section-head p:last-child { margin: 4px 0 0; color: #687585; }
+.manual-results { margin-top: 17px; padding: 25px 28px; border-color: #e5eaf0; border-radius: 20px; box-shadow: var(--shadow); }
+.manual-review { scroll-margin-top: 165px; }
+#manual-workspace, #manual-results { scroll-margin-top: 165px; }
+.manual-kpis article, .manual-purpose, .manual-issue, .manual-inspection-item { border-color: #e5eaf0; border-radius: 15px; background: #fff; }
+.manual-kpis article { padding: 18px 20px; }
+.manual-kpis strong { color: #191f28; }
+.manual-result-columns section { background: #fbfcfe; }
+.manual-table thead { color: #fff; background: #1c56a1; }
+.manual-table th, .manual-table td { font-size: 15px; }
+.manual-table tbody tr:nth-child(even) { background: #f8fafc; }
+.manual-issue-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.manual-issue { background: #fff; }
+.manual-performance { margin-top: 20px; padding: 20px; border: 1px solid #e5eaf0; border-radius: 16px; background: #fff; }
+.manual-performance .section-heading { margin-bottom: 14px; padding-bottom: 13px; }
+.manual-performance h3, .manual-validation h3 { margin: 0; color: #191f28; font-size: 21px; }
+.manual-performance .section-heading > p { color: #687585; font-size: 14px; }
+.manual-dimension-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.manual-dimension { padding: 16px; border: 1px solid #e5eaf0; border-top: 3px solid #aab8c8; border-radius: 12px; background: #fbfcfe; }
+.manual-dimension.weakening { border-top-color: #d34d5b; }
+.manual-dimension.improving { border-top-color: #20a47b; }
+.manual-dimension span { display: block; color: #4e5968; font-size: 15px; font-weight: 750; }
+.manual-dimension strong { display: block; margin: 4px 0; color: #333d49; font-size: 22px; }
+.manual-dimension.weakening strong { color: #b94150; }
+.manual-dimension.improving strong { color: #087b55; }
+.manual-dimension p { margin: 0; color: #667484; font-size: 14px; line-height: 1.55; }
+.manual-blocked-note { padding: 15px; border-radius: 10px; background: #fff4e6; color: #754d1a; font-size: 15px; }
+.manual-validation { margin-top: 14px; padding: 18px 20px; border: 1px solid #e5eaf0; border-radius: 15px; background: #fbfcfe; }
+.manual-validation ul { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 5px 22px; margin: 11px 0 0; padding-left: 20px; }
+.manual-validation li { padding: 4px 0; color: #40536a; font-size: 15px; }
+.manual-inspection-list { grid-template-columns: 1fr; }
+.manual-inspection-item { padding: 20px 22px; }
+.manual-inspection-fields { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
+.manual-inspection-fields textarea { min-height: 88px; }
+.manual-inspection-fields label { font-size: 15px; }
+.manual-top-note { padding: 6px 11px; border: 1px solid #d8e8fb; border-radius: 999px; background: #f3f8ff; color: #1765d1; }
+@media (max-width: 1350px) { .manual-dimension-grid { grid-template-columns: repeat(3,minmax(0,1fr)); } }
+@media (max-width: 950px) { .manual-dimension-grid, .manual-validation ul, .manual-inspection-fields { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (max-width: 1000px) { .manual-grid { grid-template-columns: 1fr; } .manual-app-shell { grid-template-columns: 1fr; } .manual-sidebar { display: none; } }
+@media (max-width: 650px) { .manual-shell { padding: 0 14px 50px; } .manual-stepbar { margin: 0 -14px 12px; padding: 8px 14px; gap: 5px; } .manual-stepbar button { min-height: 44px; gap: 4px; padding: 7px 3px; font-size: 12px; } .manual-stepbar button b { width: 21px; height: 21px; font-size: 11px; } .manual-hero { margin: 0 -14px; } .manual-card.inquiry-card, .manual-guide, .manual-results { padding: 20px; } .manual-card-heading { align-items: flex-start; flex-direction: column; } .manual-detail-links a { min-height: 54px; padding: 9px; font-size: 14px; } .manual-detail-links a small { font-size: 11px; } .manual-fields, .manual-kpis, .manual-purpose-grid, .manual-issue-list, .manual-dimension-grid, .manual-validation ul, .manual-inspection-fields { grid-template-columns: 1fr; } }

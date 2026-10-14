@@ -1,4 +1,4 @@
-period,revenue,operatingProfit,netIncome,costOfSales,operatingCashFlow,investingCashFlow,financingCashFlow,cash,totalAssets,totalLiabilities,equity,currentAssets,currentLiabilities,accountsReceivable,inventory,accountsPayable,shortTermDebt,longTermDebt,financeCosts,interestExpense,capex,intangibleCapex
+연도,매출액,영업이익,당기순이익,매출원가,영업활동현금흐름,투자활동현금흐름,재무활동현금흐름,현금및현금성자산,자산총계,부채총계,자본총계,유동자산,유동부채,매출채권,재고자산,매입채무,단기 금융차입금,장기 금융차입금,금융비용,이자비용,유형자산 취득,무형자산 취득
 2023,240,22,15,180,18,-15,4,45,420,190,230,180,120,55,70,43,45,75,6,5,14,1
 2024,265,27,18,197,21,-20,5,51,455,205,250,195,130,65,77,46,50,80,7,6,18,2
 2025,290,20,11,223,8,-25,14,48,490,230,260,205,145,80,92,49,65,85,9,8,23,2

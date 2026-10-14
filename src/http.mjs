@@ -38,9 +38,10 @@ const MIME = {
 };
 
 export async function serveStatic(res, publicDir, pathname) {
-  const requested = pathname === "/" ? "index.html" : pathname.slice(1);
-  const filePath = path.resolve(publicDir, requested);
-  if (!filePath.startsWith(path.resolve(publicDir))) throw new Error("잘못된 경로입니다.");
+  const requested = pathname === "/" ? "index.html" : decodeURIComponent(pathname.slice(1));
+  const root = path.resolve(publicDir);
+  const filePath = path.resolve(root, requested);
+  if (!filePath.startsWith(`${root}${path.sep}`)) throw new Error("잘못된 경로입니다.");
   const body = await readFile(filePath);
   res.writeHead(200, {
     "Content-Type": MIME[path.extname(filePath)] || "application/octet-stream",

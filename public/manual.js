@@ -5,10 +5,13 @@ let sourceCsvText = "";
 let reviewCorrections = [];
 let inspectionAnswers = {};
 const inspectionEvidence = new Map();
-const manualPages = new Set(["source", "analysis", "inspection", "opinion"]);
+const manualPages = new Set(["analysis", "inspection", "opinion"]);
+const csvHeaders = ["연도", "매출액", "영업이익", "당기순이익", "매출원가", "영업활동현금흐름", "투자활동현금흐름", "재무활동현금흐름", "현금및현금성자산", "자산총계", "부채총계", "자본총계", "유동자산", "유동부채", "매출채권", "재고자산", "매입채무", "단기 금융차입금", "장기 금융차입금", "금융비용", "이자비용", "유형자산 취득", "무형자산 취득"];
+const csvFields = ["period", "revenue", "operatingProfit", "netIncome", "costOfSales", "operatingCashFlow", "investingCashFlow", "financingCashFlow", "cash", "totalAssets", "totalLiabilities", "equity", "currentAssets", "currentLiabilities", "accountsReceivable", "inventory", "accountsPayable", "shortTermDebt", "longTermDebt", "financeCosts", "interestExpense", "capex", "intangibleCapex"];
+const fieldLabels = Object.fromEntries(csvFields.map((field, index) => [field, csvHeaders[index]]));
 
 function showManualPage(page) {
-  const target = manualPages.has(page) ? page : "source";
+  const target = manualPages.has(page) ? page : "analysis";
   document.querySelectorAll("[data-manual-page]").forEach((element) => { element.hidden = element.dataset.manualPage !== target; });
   document.querySelectorAll("[data-manual-nav]").forEach((element) => {
     element.classList.toggle("active", element.dataset.manualNav === target);
@@ -58,10 +61,9 @@ $("#manual-pdf").addEventListener("change", async (event) => {
 });
 
 $("#manual-template").addEventListener("click", () => {
-  const columns = ["period", "revenue", "operatingProfit", "netIncome", "costOfSales", "operatingCashFlow", "investingCashFlow", "financingCashFlow", "cash", "totalAssets", "totalLiabilities", "equity", "currentAssets", "currentLiabilities", "accountsReceivable", "inventory", "accountsPayable", "shortTermDebt", "longTermDebt", "financeCosts", "interestExpense", "capex", "intangibleCapex"];
   const year = new Date().getFullYear() - 1;
-  const blank = (period) => [period, ...columns.slice(1).map(() => "")].join(",");
-  const csv = `\uFEFF${columns.join(",")}\r\n${blank(year - 1)}\r\n${blank(year)}\r\n`;
+  const blank = (period) => [period, ...csvHeaders.slice(1).map(() => "")].join(",");
+  const csv = `\uFEFF${csvHeaders.join(",")}\r\n${blank(year - 1)}\r\n${blank(year)}\r\n`;
   const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
   const link = document.createElement("a");
   link.href = url; link.download = "CreditLens_비상장_재무입력_양식.csv";
@@ -70,15 +72,17 @@ $("#manual-template").addEventListener("click", () => {
 });
 
 $("#manual-sample").addEventListener("click", async () => {
-  const columns = ["period", "revenue", "operatingProfit", "netIncome", "costOfSales", "operatingCashFlow", "investingCashFlow", "financingCashFlow", "cash", "totalAssets", "totalLiabilities", "equity", "currentAssets", "currentLiabilities", "accountsReceivable", "inventory", "accountsPayable", "shortTermDebt", "longTermDebt", "financeCosts", "interestExpense", "capex", "intangibleCapex"];
-  const rows = [
-    { period: 2023, revenue: 240, operatingProfit: 22, netIncome: 15, costOfSales: 180, operatingCashFlow: 18, investingCashFlow: -15, financingCashFlow: 4, cash: 45, totalAssets: 420, totalLiabilities: 190, equity: 230, currentAssets: 180, currentLiabilities: 120, accountsReceivable: 55, inventory: 70, accountsPayable: 43, shortTermDebt: 45, longTermDebt: 75, financeCosts: 6, interestExpense: 5, capex: 14, intangibleCapex: 1 },
-    { period: 2024, revenue: 265, operatingProfit: 27, netIncome: 18, costOfSales: 197, operatingCashFlow: 21, investingCashFlow: -20, financingCashFlow: 5, cash: 51, totalAssets: 455, totalLiabilities: 205, equity: 250, currentAssets: 195, currentLiabilities: 130, accountsReceivable: 65, inventory: 77, accountsPayable: 46, shortTermDebt: 50, longTermDebt: 80, financeCosts: 7, interestExpense: 6, capex: 18, intangibleCapex: 2 },
-    { period: 2025, revenue: 290, operatingProfit: 20, netIncome: 11, costOfSales: 223, operatingCashFlow: 8, investingCashFlow: -25, financingCashFlow: 14, cash: 48, totalAssets: 490, totalLiabilities: 230, equity: 260, currentAssets: 205, currentLiabilities: 145, accountsReceivable: 80, inventory: 92, accountsPayable: 49, shortTermDebt: 65, longTermDebt: 85, financeCosts: 9, interestExpense: 8, capex: 23, intangibleCapex: 2 },
-  ];
-  const csv = `${columns.join(",")}\r\n${rows.map((row) => columns.map((column) => row[column] ?? "").join(",")).join("\r\n")}\r\n`;
+  let csv;
+  try {
+    const sampleResponse = await fetch("/가상_에이비정밀_별도재무_2023-2025_억원.csv");
+    if (!sampleResponse.ok || !sampleResponse.headers.get("Content-Type")?.includes("text/csv")) throw new Error("가상기업 CSV 응답이 아닙니다.");
+    csv = `\uFEFF${(await sampleResponse.text()).replace(/^\uFEFF/, "")}`;
+  } catch {
+    $("#manual-status").textContent = "가상기업 CSV를 불러오지 못했습니다. 한글 CSV 양식을 내려받아 입력해 주세요.";
+    return;
+  }
   const transfer = new DataTransfer();
-  transfer.items.add(new File([csv], "가상기업_재무예시.csv", { type: "text/csv" }));
+  transfer.items.add(new File([csv], "가상_에이비정밀_별도재무_2023-2025_억원.csv", { type: "text/csv;charset=utf-8" }));
   $("#manual-csv").files = transfer.files;
   $("#manual-name").value = "가상기업 에이비정밀";
   $("#manual-industry").value = "자동차부품 제조업 · 가상 사례";
@@ -123,7 +127,8 @@ function renderResult(analysis) {
   $("#manual-analysis-empty").hidden = true;
   $("#manual-results").innerHTML = `<div class="manual-result-head"><div><span class="manual-badge">${escapeHtml(analysis.manualReview?.sourceStatus || "고객제출 CSV · 원본 대조 전")}${blocked ? " · 오류 해결 전" : ""}</span><h2>${escapeHtml(analysis.company?.name)} · 재무 변화 요약</h2><p>${escapeHtml(records[0]?.period)}~${escapeHtml(latest.period)}년 ${analysis.primaryFsDiv === "CFS" ? "연결 · 그룹" : "별도 · 차주"} 재무제표 입력값 · 최근 비교 ${escapeHtml(previous.period)} → ${escapeHtml(latest.period)} · 금액 단위 억원</p></div></div>
     <div class="manual-kpis"><article><span>매출액</span><strong>${money(latest.revenue)}</strong><small>전년 대비 ${percent(latest.revenueGrowth)}</small></article><article><span>영업이익</span><strong>${money(latest.operatingProfit)}</strong><small>전년 대비 ${percent(latest.operatingProfitGrowth)}</small></article><article><span>영업활동현금흐름</span><strong>${money(latest.operatingCashFlow)}</strong><small>전년 ${money(previous.operatingCashFlow)}</small></article><article><span>부채비율</span><strong>${blocked ? "검증 대기" : Number.isFinite(latest.debtRatio) ? `${latest.debtRatio.toFixed(1)}%` : "자료없음"}</strong><small>총부채 ÷ 자기자본 × 100</small></article></div>
-    <div class="manual-result-columns"><section><h3>경영성과 5개 영역</h3>${blocked ? `<p>필수 계정의 누락·불일치가 있어 영역별 개선·약화 판정을 보류합니다. 자료 검증에서 수정해 주세요.</p>` : `<ul>${dimensions.map((item) => `<li><b class="${escapeHtml(item.status?.className)}">${escapeHtml(item.name)} · ${escapeHtml(item.status?.label || "자료부족")}</b><br>${escapeHtml(item.status?.explanation || "원본 확인 필요")}</li>`).join("")}</ul>`}</section><section><h3>검증·우선 확인</h3><ul>${statementValidations.map((item) => `<li>${escapeHtml(item.period)}년 재무상태표: <b>${escapeHtml(item.balanceSheet)}</b> · 현금흐름 연결: ${escapeHtml(item.cashFlow)}</li>`).join("")}${blocked ? "<li>임계치 경고 판정 보류 · 필수 오류 해결 필요</li>" : flags.slice(0, 5).map((flag) => `<li><b>${escapeHtml(flag.title)}</b> · ${escapeHtml(flag.reason)}</li>`).join("") || "<li>자동 임계치 경고 없음. 위험 부재를 뜻하지 않습니다.</li>"}</ul></section></div>
+    <section class="manual-performance"><div class="section-heading compact"><div><p class="eyebrow">MANAGEMENT PERFORMANCE</p><h3>경영성과 5개 영역</h3></div><p>직전연도와 비교 · 원본 대조 전 잠정 해석</p></div>${blocked ? `<p class="manual-blocked-note">필수 계정의 누락·불일치가 있어 개선·약화 판정을 보류합니다. 위 원본 대조 과제를 먼저 해결해 주세요.</p>` : `<div class="manual-dimension-grid">${dimensions.map((item) => `<article class="manual-dimension ${escapeHtml(item.status?.className || "")}"><span>${escapeHtml(item.name)}</span><strong>${escapeHtml(item.status?.label || "자료부족")}</strong><p>${escapeHtml(item.status?.explanation || "원본 확인 필요")}</p></article>`).join("")}</div>`}</section>
+    <section class="manual-validation"><h3>검증·우선 확인</h3><ul>${statementValidations.map((item) => `<li>${escapeHtml(item.period)}년 재무상태표: <b>${escapeHtml(item.balanceSheet)}</b> · 현금흐름 연결: ${escapeHtml(item.cashFlow)}</li>`).join("")}${blocked ? "<li>임계치 경고 판정 보류 · 필수 오류 해결 필요</li>" : flags.slice(0, 5).map((flag) => `<li><b>${escapeHtml(flag.title)}</b> · ${escapeHtml(flag.reason)}</li>`).join("") || "<li>자동 임계치 경고 없음. 위험 부재를 뜻하지 않습니다.</li>"}</ul></section>
     <div class="manual-table-wrap"><table class="manual-table"><thead><tr><th>입력·계산 계정</th>${[...records].reverse().map((row) => `<th>${escapeHtml(row.period)}년</th>`).join("")}</tr></thead><tbody>${metricRows.map(([label, key]) => `<tr><td>${escapeHtml(label)}</td>${[...records].reverse().map((row) => `<td>${money(row[key])}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
     <h3>요청 여신별 검토</h3><div class="manual-purpose-grid">${purpose("workingCapital", "운전자금")}${purpose("facility", "시설자금") || ""}</div>
     <p class="manual-result-note">PDF ${pdfEvidence.length}건은 이 브라우저 탭에서만 원본 대조용으로 선택했습니다. 파일 내용은 서버에 전송·저장하지 않았고, 숫자도 PDF에서 자동 추출하지 않았습니다. ${blocked ? "입력 불일치 또는 필수값 누락이 있어 영향을 받는 재무 판단은 보류합니다. " : ""}CSV 계정 정의·감사의견·주석상 차입만기·담보·보증은 담당자가 원본과 대조해야 합니다. 이 결과는 승인·거절이나 적정 대출금액 제안이 아닙니다.</p>`;
@@ -136,8 +141,8 @@ function renderReview(analysis) {
   $("#manual-review").hidden = false;
   $("#manual-review").innerHTML = `<h2>원본 대조·수정 과제</h2><p>오류를 계산에서 숨기지 않습니다. 원본 페이지를 확인한 담당자가 값을 수정한 뒤 재계산할 수 있습니다. 수정 입력은 PDF 자동 검증을 의미하지 않습니다.</p>
     <div class="manual-review-summary"><strong>필수 오류 ${blocking}건</strong><strong>추가 확인 ${issues.length - blocking}건</strong><strong>담당자 수정 ${changes.length}건</strong></div>
-    <div class="manual-issue-list">${issues.length ? issues.map((issue) => `<article class="manual-issue ${issue.severity === "blocking" ? "blocking" : ""}"><h3>${escapeHtml(issue.title)}</h3><small>${escapeHtml(issue.period || "출처·범위")} · ${issue.severity === "blocking" ? "판단 보류" : "원본 확인"}</small><p>${escapeHtml(issue.detail)}</p><p><b>영향:</b> ${escapeHtml((issue.affects || []).join(" · ") || "출처 신뢰성")}</p>${issue.fields?.length ? `<div class="manual-correction-grid">${issue.fields.map((field) => `<label>${escapeHtml(field)} · ${escapeHtml(issue.period)}년<input type="text" inputmode="decimal" data-review-period="${escapeHtml(issue.period)}" data-review-field="${escapeHtml(field)}" value="${escapeHtml(issue.values?.[field] || "")}" placeholder="원문 대조 후 입력" /></label>`).join("")}<label>원문 페이지<input type="text" data-review-page="${escapeHtml(issue.id)}" placeholder="예: 감사보고서 p.12" /></label><label>수정 근거<input type="text" data-review-note="${escapeHtml(issue.id)}" placeholder="계정명·단위 차이 기록" /></label></div>` : ""}</article>`).join("") : `<div class="manual-empty">자동 검산 오류는 없습니다. 원본과 입력값의 일치·감사의견·주석은 별도로 확인해야 합니다.</div>`}</div>
-    ${changes.length ? `<h3>수정 이력 · 이 화면에만 유지</h3><ul>${changes.map((item) => `<li>${escapeHtml(item.period)}년 ${escapeHtml(item.field)}: ${money(item.previous)} → ${money(item.current)} · ${escapeHtml(item.page || "원문 페이지 미기재")} · ${escapeHtml(item.note || "근거 미기재")}</li>`).join("")}</ul>` : ""}
+    <div class="manual-issue-list">${issues.length ? issues.map((issue) => `<article class="manual-issue ${issue.severity === "blocking" ? "blocking" : ""}"><h3>${escapeHtml(issue.title)}</h3><small>${escapeHtml(issue.period || "출처·범위")} · ${issue.severity === "blocking" ? "판단 보류" : "원본 확인"}</small><p>${escapeHtml(issue.detail)}</p><p><b>영향:</b> ${escapeHtml((issue.affects || []).join(" · ") || "출처 신뢰성")}</p>${issue.fields?.length ? `<div class="manual-correction-grid">${issue.fields.map((field) => `<label>${escapeHtml(fieldLabels[field] || field)} · ${escapeHtml(issue.period)}년<input type="text" inputmode="decimal" data-review-period="${escapeHtml(issue.period)}" data-review-field="${escapeHtml(field)}" value="${escapeHtml(issue.values?.[field] || "")}" placeholder="원문 대조 후 입력" /></label>`).join("")}<label>원문 페이지<input type="text" data-review-page="${escapeHtml(issue.id)}" placeholder="예: 감사보고서 p.12" /></label><label>수정 근거<input type="text" data-review-note="${escapeHtml(issue.id)}" placeholder="계정명·단위 차이 기록" /></label></div>` : ""}</article>`).join("") : `<div class="manual-empty">자동 검산 오류는 없습니다. 원본과 입력값의 일치·감사의견·주석은 별도로 확인해야 합니다.</div>`}</div>
+    ${changes.length ? `<h3>수정 이력 · 이 화면에만 유지</h3><ul>${changes.map((item) => `<li>${escapeHtml(item.period)}년 ${escapeHtml(fieldLabels[item.field] || item.field)}: ${money(item.previous)} → ${money(item.current)} · ${escapeHtml(item.page || "원문 페이지 미기재")} · ${escapeHtml(item.note || "근거 미기재")}</li>`).join("")}</ul>` : ""}
     <div class="manual-review-actions"><button class="primary-button" id="manual-recalculate" type="button">원문 대조값 적용·재계산 →</button><p>계정값을 수정하지 않았다면 검증 과제는 그대로 남습니다.</p></div>`;
   $("#manual-recalculate").addEventListener("click", () => {
     const updates = new Map(reviewCorrections.map((item) => [`${item.period}:${item.field}`, item]));
@@ -226,7 +231,7 @@ async function performAnalysis() {
     renderOpinion(result);
     const issues = result.manualReview?.issues || [];
     $("#manual-status").textContent = `입력값을 계산하고 검증 과제 ${issues.length}건을 표시했습니다. 원본과 대조 전이므로 모든 해석은 잠정입니다.`;
-    showManualPage("source");
+    showManualPage("analysis");
     $("#manual-review").scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (error) {
     $("#manual-status").textContent = error.message;

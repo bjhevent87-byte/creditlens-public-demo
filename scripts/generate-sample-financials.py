@@ -61,7 +61,24 @@ def amount(value: int | float) -> str:
 
 def load_records():
     with SOURCE.open(encoding="utf-8-sig", newline="") as stream:
-        rows = list(csv.DictReader(stream))
+        labels = [
+            "연도", "매출액", "영업이익", "당기순이익", "매출원가", "영업활동현금흐름",
+            "투자활동현금흐름", "재무활동현금흐름", "현금및현금성자산", "자산총계",
+            "부채총계", "자본총계", "유동자산", "유동부채", "매출채권", "재고자산",
+            "매입채무", "단기 금융차입금", "장기 금융차입금", "금융비용", "이자비용",
+            "유형자산 취득", "무형자산 취득",
+        ]
+        keys = [
+            "period", "revenue", "operatingProfit", "netIncome", "costOfSales", "operatingCashFlow",
+            "investingCashFlow", "financingCashFlow", "cash", "totalAssets", "totalLiabilities",
+            "equity", "currentAssets", "currentLiabilities", "accountsReceivable", "inventory",
+            "accountsPayable", "shortTermDebt", "longTermDebt", "financeCosts", "interestExpense",
+            "capex", "intangibleCapex",
+        ]
+        reader = csv.DictReader(stream)
+        if reader.fieldnames != labels:
+            raise ValueError("가상 CSV의 한글 계정명이 PDF 생성기의 기대 순서와 다릅니다.")
+        rows = [{key: row[label] for key, label in zip(keys, labels)} for row in reader]
     if [row["period"] for row in rows] != ["2023", "2024", "2025"]:
         raise ValueError("Expected 2023-2025 sample data")
     records = [{key: int(value) if key != "period" and value else value for key, value in row.items()} for row in rows]

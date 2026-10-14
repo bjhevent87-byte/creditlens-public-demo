@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { inspectManualStatementsCsv } from "../src/services/manual-statement-service.mjs";
+import { readFileSync } from "node:fs";
+import { inspectManualStatementsCsv, MANUAL_CSV_COLUMNS, MANUAL_CSV_LABELS } from "../src/services/manual-statement-service.mjs";
 
 const csv = [
   "period,revenue,operatingProfit,operatingCashFlow,totalAssets,totalLiabilities,equity,costOfSales,accountsReceivable,inventory,accountsPayable",
@@ -45,4 +46,15 @@ test("가상기업 CSV의 유동자산 오기를 원본 대조 과제로 표시�
   const corrected = inspectManualStatementsCsv(input, { unit: "억원", overrides: [{ period: "2025", field: "currentAssets", value: "230", page: "가상 원본 p.2", note: "유동자산 대조" }] });
   assert.equal(corrected.issues.some((issue) => issue.type === "current-assets-components"), false);
   assert.equal(corrected.records.at(-1).currentAssets, 230 * 100_000_000);
+});
+
+test("한글 CSV 계정명을 읽고 영어 기존 양식도 유지하며 중복 별칭을 거부한다", () => {
+  const korean = readFileSync(new URL("../public/가상_에이비정밀_별도재무_2023-2025_억원.csv", import.meta.url), "utf8");
+  assert.deepEqual(korean.split(/\r?\n/)[0].split(","), MANUAL_CSV_COLUMNS.map((field) => MANUAL_CSV_LABELS[field]));
+  const reviewed = inspectManualStatementsCsv(korean, { unit: "억원" });
+  assert.equal(reviewed.records.at(-1).revenue, 290 * 100_000_000);
+  assert.ok(reviewed.issues.some((issue) => issue.type === "current-assets-components"));
+  assert.equal(inspectManualStatementsCsv(csv, { unit: "억원" }).records.length, 2);
+  assert.throws(() => inspectManualStatementsCsv("연도,period,매출액\n2024,2024,100\n2025,2025,110"), /중복/);
+  assert.throws(() => inspectManualStatementsCsv("연도,임의계정\n2024,1\n2025,2"), /알 수 없는 CSV 계정명/);
 });
