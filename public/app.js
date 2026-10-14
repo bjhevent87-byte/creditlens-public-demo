@@ -209,6 +209,7 @@ async function analyze(demo = false) {
     if (!sameCompany) {
       state.report = "opinion";
       state.findingReviews = {};
+      state.attachments.filter((file) => file.sessionOnly && file.objectUrl).forEach((file) => URL.revokeObjectURL(file.objectUrl));
       state.attachments = [];
       state.industryEvidence = [];
       state.debtRegister = [];
@@ -813,15 +814,17 @@ function renderPerformanceConclusion(performance) {
   const weakened = count("weakening");
   const improved = count("improving");
   const unknown = count("unknown");
-  const orderedIds = ["cash", "stability", "profitability", "activity", "growth"];
-  const signals = orderedIds.map((id) => {
-    const dimension = dimensions.find((item) => item.id === id && item.status?.className === "weakening");
-    if (!dimension) return null;
-    const metric = (dimension.metrics || [])
-      .filter((item) => item.trend?.className === "weakening" && Number.isFinite(item.trend.previous) && Number.isFinite(item.trend.latest))
-      .sort((left, right) => Math.abs(right.trend.delta) / Math.max(right.trend.threshold || 0.2, 0.2) - Math.abs(left.trend.delta) / Math.max(left.trend.threshold || 0.2, 0.2))[0];
-    return metric ? { dimension, metric } : null;
-  }).filter(Boolean).slice(0, 3);
+  const signals = dimensions.map((dimension) => {
+    const ranked = (dimension.metrics || [])
+      .filter((item) => Number.isFinite(item.trend?.previous) && Number.isFinite(item.trend?.latest))
+      .sort((left, right) => {
+        const priority = { weakening: 3, improving: 2, neutral: 1 };
+        const leftScore = priority[left.trend.className] || 0;
+        const rightScore = priority[right.trend.className] || 0;
+        return rightScore - leftScore || Math.abs(right.trend.delta || 0) / Math.max(right.trend.threshold || 0.2, 0.2) - Math.abs(left.trend.delta || 0) / Math.max(left.trend.threshold || 0.2, 0.2);
+      });
+    return { dimension, metric: ranked[0] || null };
+  });
   const records = state.analysis?.records || [];
   const previousYear = records.at(-2)?.period || "전기";
   const latestYear = records.at(-1)?.period || "당기";
@@ -832,21 +835,22 @@ function renderPerformanceConclusion(performance) {
   const summaryCount = summaryTone === "unknown" ? unknown : weakened;
   const summaryLabel = summaryTone === "unknown" ? "자료부족 영역" : "약화 영역";
   const signalCards = signals.map(({ dimension, metric }) => {
-    const valueUnit = metric.unit === "%p" ? "%" : metric.unit;
-    const deltaUnit = ["%", "%p"].includes(metric.unit) ? "%p" : metric.unit;
-    const digits = ["배", "회"].includes(metric.unit) ? 2 : 1;
-    return `<article class="conclusion-signal">
-      <div class="conclusion-signal-heading"><span>${escapeHtml(dimension.name)}</span><b>약화</b></div>
-      <h4>${escapeHtml(metric.label)}</h4>
-      <div class="conclusion-values"><span><small>${escapeHtml(previousYear)}</small>${formatNumber(metric.trend.previous, digits, valueUnit)}</span><span aria-hidden="true">→</span><strong><small>${escapeHtml(latestYear)}</small>${formatNumber(metric.trend.latest, digits, valueUnit)}</strong></div>
-      <p>전년 대비 <b>${changeText(metric.trend.delta, deltaUnit)}</b></p>
+    const valueUnit = metric?.unit === "%p" ? "%" : metric?.unit || "";
+    const deltaUnit = ["%", "%p"].includes(metric?.unit) ? "%p" : valueUnit;
+    const digits = ["배", "회"].includes(metric?.unit) ? 2 : 1;
+    const tone = dimension.status?.className || "unknown";
+    return `<article class="conclusion-signal ${escapeHtml(tone)}">
+      <div class="conclusion-signal-heading"><span>${escapeHtml(dimension.name)}</span><b>${escapeHtml(dimension.status?.label || "자료부족")}</b></div>
+      <h4>${escapeHtml(metric?.label || "비교 가능한 지표 없음")}</h4>
+      <div class="conclusion-values"><span><small>${escapeHtml(previousYear)}</small>${formatNumber(metric?.trend?.previous, digits, valueUnit)}</span><span aria-hidden="true">→</span><strong><small>${escapeHtml(latestYear)}</small>${formatNumber(metric?.trend?.latest, digits, valueUnit)}</strong></div>
+      <p>전년 대비 <b>${Number.isFinite(metric?.trend?.delta) ? changeText(metric.trend.delta, deltaUnit) : "비교값 없음"}</b></p>
       <a href="#performance-${escapeHtml(dimension.id)}">계산 근거 보기 <span aria-hidden="true">↗</span></a>
     </article>`;
   }).join("");
   const statusChips = dimensions.map((item) => `<span class="conclusion-status ${escapeHtml(item.status.className)}">${escapeHtml(item.name)} <b>${escapeHtml(item.status.label)}</b></span>`).join("");
   return `<div class="conclusion-head"><div><p class="eyebrow">경영성과 핵심 요약 · ${escapeHtml(periodLabel(records))}</p><h3>${headline}</h3><p>먼저 바뀐 숫자를 보고, 원인은 아래에서 자료로 검증합니다.</p></div><div class="conclusion-count ${summaryTone}"><strong>${summaryCount}</strong><span>${summaryLabel}</span></div></div>
     <div class="conclusion-statuses" aria-label="영역별 판정">${statusChips}</div>
-    ${signalCards ? `<div class="conclusion-signals">${signalCards}</div>` : `<p class="conclusion-empty">직전연도와 직접 비교할 수 있는 약화 지표가 없습니다. 자료 범위와 최근 실적을 확인하세요.</p>`}
+    ${signalCards ? `<div class="conclusion-carousel"><button type="button" class="conclusion-scroll" data-conclusion-scroll="-1" aria-label="이전 경영성과 영역">‹</button><div class="conclusion-signals" tabindex="0" aria-label="경영성과 5개 영역, 좌우로 이동">${signalCards}</div><button type="button" class="conclusion-scroll" data-conclusion-scroll="1" aria-label="다음 경영성과 영역">›</button></div>` : `<p class="conclusion-empty">직전연도와 직접 비교할 수 있는 지표가 없습니다. 자료 범위와 최근 실적을 확인하세요.</p>`}
     <div class="conclusion-footer"><p>이 화면은 전년 대비 변화 방향입니다. 원인 확정이나 대출 승인·거절 판단은 아닙니다.${improved ? ` 개선된 영역 ${improved}개도 아래에 함께 표시했습니다.` : ""}</p><details><summary>판정 기준 보기</summary><p>${escapeHtml(performance.rule || "직전연도 비교")}</p></details></div>`;
 }
 
@@ -867,6 +871,13 @@ function renderPerformance() {
   $("#hypothesis-list").innerHTML = performance.hypotheses.map((item) => `<article class="diagnostic-narrative"><header><div><span>${escapeHtml(item.priority)}</span><h4>${escapeHtml(item.category)}</h4></div></header><section><b>1. 관찰된 사실</b><p>${escapeHtml(item.observation)}</p><div class="evidence">${item.evidence.map((evidence) => `<span>${escapeHtml(evidence)}</span>`).join("")}</div></section><section><b>2. 가능한 원인 가설</b><p>${escapeHtml(item.hypothesis)}</p></section><section><b>3. 검증할 자료와 질문</b><div class="verification-steps">${item.verificationSteps.map((step) => `<div><strong>${escapeHtml(step.title)}</strong><p><b>자료</b> ${escapeHtml(step.data)}</p><p><b>질문</b> ${escapeHtml(step.question)}</p></div>`).join("")}</div></section></article>`).join("");
   $("#performance-conclusion").innerHTML = renderPerformanceConclusion(performance);
 }
+
+$("#performance-conclusion").addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-conclusion-scroll]");
+  if (!button) return;
+  const carousel = $("#performance-conclusion .conclusion-signals");
+  carousel?.scrollBy({ left: Number(button.dataset.conclusionScroll) * (carousel.clientWidth * 0.82), behavior: "smooth" });
+});
 
 function renderRisks() {
   const risks = state.analysis.assessment.redFlags;
@@ -895,6 +906,33 @@ function renderRisks() {
   }).join("") : `<div class="no-risk">현재 규칙에서 우선 확인할 변화는 발견되지 않았습니다. 공시 이후 실적과 비재무 정보는 별도로 확인해야 합니다.</div>`;
 }
 
+function macroDateLabel(value) {
+  const raw = String(value || "");
+  return /^\d{8}$/.test(raw) ? `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6)}` : /^\d{6}$/.test(raw) ? `${raw.slice(0, 4)}-${raw.slice(4)}` : raw || "자료없음";
+}
+
+function macroDeltaText(value, unit = "") {
+  if (!Number.isFinite(value)) return "비교값 없음";
+  const suffix = String(unit).includes("%") ? "%p" : unit === "원" ? "원" : unit === "지수" || String(unit).includes("=100") ? "포인트" : "";
+  return `${value > 0 ? "+" : ""}${formatNumber(value, 2)}${suffix}`;
+}
+
+function macroTrendMarkup(item) {
+  const observations = (Array.isArray(item.history) && item.history.length >= 2 ? item.history : [item.previous, item.latest])
+    .filter((point) => point && Number.isFinite(Number(point.value)) && point.date);
+  if (observations.length < 2) return `<div class="macro-trend"><b>최근 동향 자료 부족</b><p>직전 수록치와 최신 수록치를 함께 확인할 수 없습니다.</p></div>`;
+  const values = observations.map((point) => Number(point.value));
+  const min = Math.min(...values), max = Math.max(...values);
+  const spread = max - min;
+  const points = values.map((value, index) => `${8 + index * 184 / (values.length - 1)},${spread ? 55 - (value - min) / spread * 42 : 34}`).join(" ");
+  const delta = values.at(-1) - values[0];
+  const direction = delta > 0 ? "상승" : delta < 0 ? "하락" : "변화 없음";
+  const basis = observations.length === 2 ? "최근 2회 수록" : item.frequency === "D" ? "최근 90일 수록" : "최근 6개 수록월";
+  const start = macroDateLabel(observations[0].date), end = macroDateLabel(observations.at(-1).date);
+  const lastY = spread ? 55 - (values.at(-1) - min) / spread * 42 : 34;
+  return `<div class="macro-trend"><div class="macro-trend-head"><span>${escapeHtml(basis)} · ${escapeHtml(direction)}</span><b>${macroDeltaText(delta, item.unit)}</b></div><svg viewBox="0 0 200 68" role="img" aria-label="${escapeHtml(item.name)} ${escapeHtml(start)}부터 ${escapeHtml(end)}까지 ${escapeHtml(direction)}"><polyline class="macro-trend-line" points="${points}"/><circle class="macro-trend-dot" cx="192" cy="${lastY}" r="4"/></svg><div class="macro-trend-periods"><span>${escapeHtml(start)} · ${formatNumber(values[0], 2)} ${escapeHtml(item.unit || "")}</span><span>${escapeHtml(end)} · ${formatNumber(values.at(-1), 2)} ${escapeHtml(item.unit || "")}</span></div><p>이 추세만으로 기업에 유리·불리를 단정하지 않습니다. 아래 노출경로를 확인하세요.</p></div>`;
+}
+
 function renderMacro() {
   const profile = industryProfile();
   const allMacro = state.analysis.macro;
@@ -912,7 +950,7 @@ function renderMacro() {
     const ageDays = publishedDate ? Math.floor((basis - publishedDate) / 86_400_000) : Infinity;
     const timely = item.frequency === "D" ? ageDays <= 7 : ageDays <= 70;
     const narrative = macroNarrative(item, profile, delta);
-    return `<article class="macro-card"><div class="macro-card-head"><span class="macro-name">${escapeHtml(item.name)}</span><span class="freshness-tag ${timely ? "current" : "lagged"}">${timely ? "최신권" : "공표시차 확인"}</span></div><strong>${item.latest ? `${formatNumber(item.latest.value, 2)}${escapeHtml(item.unit)}` : escapeHtml(item.status)}</strong><p>최신 수록 <b>${escapeHtml(published)}</b></p><p>${escapeHtml(item.source || "출처 확인 필요")} · ${item.paginationComplete === false ? "일부 수집" : "전체조회"}</p><div class="delta">${Number.isFinite(delta) ? `직전 수록치 대비 ${changeText(delta, item.unit === "%" ? "%p" : "")}` : escapeHtml(item.message || "비교값 없음")}</div><div class="macro-relevance"><p><b>왜 확인하나</b>${escapeHtml(narrative.why)}</p><p><b>현재 우려·기회</b>${escapeHtml(narrative.concern)}</p><p><b>기업자료로 확인</b>${escapeHtml(narrative.verify)}</p></div></article>`;
+    return `<article class="macro-card"><div class="macro-card-head"><span class="macro-name">${escapeHtml(item.name)}</span><span class="freshness-tag ${timely ? "current" : "lagged"}">${timely ? "최신권" : "공표시차 확인"}</span></div><strong>${item.latest ? `${formatNumber(item.latest.value, 2)} ${escapeHtml(item.unit)}` : escapeHtml(item.status)}</strong><p>최신 수록 <b>${escapeHtml(published)}</b></p><p>${escapeHtml(item.source || "출처 확인 필요")} · ${item.paginationComplete === false ? "일부 수집" : "전체조회"}</p>${macroTrendMarkup(item)}<div class="delta">${Number.isFinite(delta) ? `직전 수록치 대비 ${macroDeltaText(delta, item.unit)}` : escapeHtml(item.message || "비교값 없음")}</div><div class="macro-relevance"><p><b>왜 확인하나</b>${escapeHtml(narrative.why)}</p><p><b>현재 우려·기회</b>${escapeHtml(narrative.concern)}</p><p><b>기업자료로 확인</b>${escapeHtml(narrative.verify)}</p></div></article>`;
   }).join("");
   if (!macro.length) $("#macro-grid").innerHTML = `<div class="no-risk">현재 이 업종에 맞는 최신 외부지표가 연결되지 않았습니다. 관련 없는 제조업·수출지표는 표시하지 않습니다.</div>`;
   const items = state.analysis.assessment.interpretations.filter((item) => {
@@ -1127,6 +1165,9 @@ function renderLoans() {
   const support = state.analysis.decisionSupport;
   const a = state.analysis;
   const latest = a.records.at(-1);
+  const comparison = currentComparison();
+  const cashPeriod = comparison.interim ? `${comparison.period} 누적` : `${latest.period}년 연간`;
+  const annualPeriod = `${latest.period}년 연간 사업보고서`;
   const working = Number(a.loanRequest.workingAmount) > 0;
   const facility = Number(a.loanRequest.facilityAmount) > 0;
   renderLoanOverview();
@@ -1139,10 +1180,10 @@ function renderLoans() {
   if (state.loanView === "working") {
     const netOperatingInvestment = [latest.accountsReceivable, latest.inventory, latest.accountsPayable].every(Number.isFinite)
       ? latest.accountsReceivable + latest.inventory - latest.accountsPayable : null;
-    $("#loan-grid").innerHTML = `<article class="loan-detail-card"><header><div><p class="eyebrow">WORKING CAPITAL / SHORT TERM</p><h3>운전자금 ${a.loanRequest.workingAmount.toLocaleString("ko-KR")}억원</h3></div><span>${a.loanRequest.workingTermMonths}개월</span></header><div class="stance">${escapeHtml(support.workingCapital.stance)}</div><div class="loan-metric-grid"><div><span>현금전환주기</span><strong>${formatNumber(latest.cashConversionCycle, 1)}일</strong><small>채권회수일 + 재고보유일 - 매입결제일</small></div><div><span>순영업운전자산</span><strong>${formatMoney(netOperatingInvestment)}</strong><small>매출채권 + 재고 - 매입채무</small></div><div><span>영업현금흐름</span><strong>${formatMoney(latest.operatingCashFlow)}</strong><small>단기 상환재원의 출발점</small></div></div><h4>자동 적용된 검토 규칙</h4>${ruleList(support.workingCapital.appliedRules)}<div class="loan-columns"><div><h4>중점 판단</h4><ul><li>요청금액이 실제 운전자금 공백과 맞는지</li><li>매출채권 회수와 재고판매로 기간 내 상환 가능한지</li><li>시설투자·관계회사 지원 등 다른 용도로 유출되지 않는지</li></ul></div><div><h4>필요 확인자료</h4><ul><li>월별 자금수지와 운전자금 산정표</li><li>매출채권 연령분석 및 상위 매출처</li><li>재고 명세와 장기체화 재고</li><li>매입·매출 결제조건</li></ul></div></div></article>`;
+    $("#loan-grid").innerHTML = `<article class="loan-detail-card"><header><div><p class="eyebrow">WORKING CAPITAL / SHORT TERM</p><h3>운전자금 ${a.loanRequest.workingAmount.toLocaleString("ko-KR")}억원</h3></div><span>${a.loanRequest.workingTermMonths}개월</span></header><div class="loan-period-banner"><strong>영업활동현금흐름은 ${escapeHtml(cashPeriod)} ${formatMoney(comparison.current?.operatingCashFlow)}</strong>입니다. 회전일·운전자산과 아래 자동 규칙은 ${escapeHtml(annualPeriod)} 기준으로 따로 표시합니다. 두 기간의 금액을 직접 합산하지 않습니다.</div><div class="stance">${escapeHtml(support.workingCapital.stance)}</div><div class="loan-metric-grid"><div><span>현금전환주기 · ${escapeHtml(annualPeriod)}</span><strong>${formatNumber(latest.cashConversionCycle, 1)}일</strong><small>채권회수일 + 재고보유일 - 매입결제일</small></div><div><span>순영업운전자산 · ${escapeHtml(annualPeriod)}</span><strong>${formatMoney(netOperatingInvestment)}</strong><small>매출채권 + 재고 - 매입채무</small></div><div><span>영업활동현금흐름 · ${escapeHtml(cashPeriod)}</span><strong>${formatMoney(comparison.current?.operatingCashFlow)}</strong><small>${comparison.interim ? "반기·분기 누적 실적 · 전년 동기와 비교" : "연간 실적"} · 단기 상환재원의 출발점</small></div></div><h4>자동 적용된 검토 규칙 · ${escapeHtml(annualPeriod)}</h4>${ruleList(support.workingCapital.appliedRules)}<div class="loan-columns"><div><h4>중점 판단</h4><ul><li>요청금액이 실제 운전자금 공백과 맞는지</li><li>매출채권 회수와 재고판매로 기간 내 상환 가능한지</li><li>시설투자·관계회사 지원 등 다른 용도로 유출되지 않는지</li></ul></div><div><h4>필요 확인자료</h4><ul><li>월별 자금수지와 운전자금 산정표</li><li>매출채권 연령분석 및 상위 매출처</li><li>재고 명세와 장기체화 재고</li><li>매입·매출 결제조건</li></ul></div></div></article>`;
   } else if (state.loanView === "facility") {
     const capexCoverage = Number(latest.totalCapex) > 0 ? Number(latest.operatingCashFlow) / Number(latest.totalCapex) : null;
-    $("#loan-grid").innerHTML = `<article class="loan-detail-card"><header><div><p class="eyebrow">FACILITY / LONG TERM</p><h3>시설자금 ${a.loanRequest.facilityAmount.toLocaleString("ko-KR")}억원</h3></div><span>${a.loanRequest.facilityTermMonths}개월</span></header><div class="stance">${escapeHtml(support.facility.stance)}</div><div class="loan-metric-grid"><div><span>최근 유형·무형 CAPEX</span><strong>${formatMoney(latest.totalCapex)}</strong><small>투자현금흐름·주석과 교차확인</small></div><div><span>CFO / CAPEX</span><strong>${Number.isFinite(capexCoverage) ? formatNumber(capexCoverage, 2, "배") : "자료없음"}</strong><small>내부창출 현금의 투자부담 흡수 정도</small></div><div><span>추가 차입 전 부채비율</span><strong>${formatNumber(latest.debtRatio, 1, "%")}</strong><small>자기자금·담보와 함께 판단</small></div></div><h4>자동 적용된 검토 규칙</h4>${ruleList(support.facility.appliedRules)}<div class="loan-columns"><div><h4>중점 판단</h4><ul><li>시설투자의 필요성과 기존시설 중복 여부</li><li>투자 후 생산·판매 증가의 객관적 근거</li><li>자기자금 투입과 비용초과 대응능력</li><li>시설 완료 후 장기 원리금 상환 가능성</li></ul></div><div><h4>필요 확인자료</h4><ul><li>계약서·견적서·인허가·공정계획</li><li>자기자금 조달 증빙</li><li>향후 3개년 추정손익과 자금수지</li><li>수주·판매계약 및 설비 잔존가치</li></ul></div></div></article>`;
+    $("#loan-grid").innerHTML = `<article class="loan-detail-card"><header><div><p class="eyebrow">FACILITY / LONG TERM</p><h3>시설자금 ${a.loanRequest.facilityAmount.toLocaleString("ko-KR")}억원</h3></div><span>${a.loanRequest.facilityTermMonths}개월</span></header><div class="loan-period-banner">아래 투자규모·영업활동현금흐름·부채비율과 자동 규칙은 모두 <strong>${escapeHtml(annualPeriod)}</strong> 기준입니다. ${comparison.interim ? `${escapeHtml(comparison.period)} 최신 실적은 위 요청여신 카드와 재무·성과 탭에서 별도로 확인합니다.` : ""}</div><div class="stance">${escapeHtml(support.facility.stance)}</div><div class="loan-metric-grid"><div><span>최근 유형·무형 CAPEX · 연간</span><strong>${formatMoney(latest.totalCapex)}</strong><small>투자현금흐름·주석과 교차확인</small></div><div><span>영업활동현금흐름 / CAPEX · 연간</span><strong>${Number.isFinite(capexCoverage) ? formatNumber(capexCoverage, 2, "배") : "자료없음"}</strong><small>내부창출 현금의 투자부담 흡수 정도</small></div><div><span>추가 차입 전 부채비율 · 연말</span><strong>${formatNumber(latest.debtRatio, 1, "%")}</strong><small>자기자금·담보와 함께 판단</small></div></div><h4>자동 적용된 검토 규칙 · ${escapeHtml(annualPeriod)}</h4>${ruleList(support.facility.appliedRules)}<div class="loan-columns"><div><h4>중점 판단</h4><ul><li>시설투자의 필요성과 기존시설 중복 여부</li><li>투자 후 생산·판매 증가의 객관적 근거</li><li>자기자금 투입과 비용초과 대응능력</li><li>시설 완료 후 장기 원리금 상환 가능성</li></ul></div><div><h4>필요 확인자료</h4><ul><li>계약서·견적서·인허가·공정계획</li><li>자기자금 조달 증빙</li><li>향후 3개년 추정손익과 자금수지</li><li>수주·판매계약 및 설비 잔존가치</li></ul></div></div></article>`;
   } else {
     const newDebt = (a.loanRequest.workingAmount + a.loanRequest.facilityAmount) * 100_000_000;
     const afterDebtRatio = Number.isFinite(latest.totalLiabilities) && Number.isFinite(latest.equity) && latest.equity > 0
@@ -1159,7 +1200,7 @@ function renderLoanOverview() {
   const requestedWorking = Number(a.loanRequest.workingAmount) || 0;
   const requestedFacility = Number(a.loanRequest.facilityAmount) || 0;
   const fact = (label, value, change) => `<div class="loan-glance-fact"><span>${label}</span><strong>${escapeHtml(value)}</strong><small class="tone-${change.tone}">${escapeHtml(change.text)} · 전년 ${view.interim ? "동기" : "대비"}</small></div>`;
-  const workingCard = requestedWorking ? `<article class="loan-glance-card"><div class="loan-glance-head"><div><span class="loan-term">단기 · ${a.loanRequest.workingTermMonths}개월</span><h3>운전자금</h3></div><strong>${requestedWorking.toLocaleString("ko-KR")}억원</strong></div><div class="loan-glance-facts">${fact("매출액", formatMoney(current?.revenue), amountChange(current?.revenue, previous?.revenue))}${fact("영업현금", formatMoney(current?.operatingCashFlow), amountChange(current?.operatingCashFlow, previous?.operatingCashFlow))}</div><p class="loan-glance-judgment"><b>우선 확인</b> · 매입부터 입금까지의 실제 회전기간이 신청 만기와 맞는지 확인해야 합니다.</p><p><b>받을 자료</b> · 월별 매입·판매·회수 계획, 매출채권 Aging</p><button type="button" data-loan-glance="working">운전자금 계산·규칙 보기 →</button></article>` : "";
+  const workingCard = requestedWorking ? `<article class="loan-glance-card"><div class="loan-glance-head"><div><span class="loan-term">단기 · ${a.loanRequest.workingTermMonths}개월</span><h3>운전자금</h3></div><strong>${requestedWorking.toLocaleString("ko-KR")}억원</strong></div><div class="loan-glance-facts">${fact("매출액", formatMoney(current?.revenue), amountChange(current?.revenue, previous?.revenue))}${fact(`영업활동현금흐름 · ${view.interim ? "중간 누적" : "연간"}`, formatMoney(current?.operatingCashFlow), amountChange(current?.operatingCashFlow, previous?.operatingCashFlow))}</div><p class="loan-glance-judgment"><b>우선 확인</b> · 매입부터 입금까지의 실제 회전기간이 신청 만기와 맞는지 확인해야 합니다.</p><p><b>받을 자료</b> · 월별 매입·판매·회수 계획, 매출채권 Aging</p><button type="button" data-loan-glance="working">운전자금 계산·규칙 보기 →</button></article>` : "";
   const facilityCard = requestedFacility ? `<article class="loan-glance-card"><div class="loan-glance-head"><div><span class="loan-term">장기 · ${a.loanRequest.facilityTermMonths}개월</span><h3>시설자금</h3></div><strong>${requestedFacility.toLocaleString("ko-KR")}억원</strong></div><div class="loan-glance-facts">${fact("영업이익", formatMoney(current?.operatingProfit), amountChange(current?.operatingProfit, previous?.operatingProfit))}${fact("부채비율", formatNumber(view.debtRatio, 1, "%"), ratioChange(view.debtRatio, view.previousDebtRatio, true))}</div><p class="loan-glance-judgment"><b>우선 확인</b> · 신규 설비가 장기 원리금 상환재원을 만드는지 확인 전입니다.</p><p><b>받을 자료</b> · 설비 계약·견적, 자기자금, 수주·가동률 계획</p><button type="button" data-loan-glance="facility">시설자금 계산·규칙 보기 →</button></article>` : "";
   $("#loan-overview").innerHTML = `<p class="loan-overview-period">${escapeHtml(view.period)} · ${escapeHtml(view.scope)} · ${view.interim ? "전년 동기" : "전년"} 비교. 공개자료의 관찰값이며 대출 승인·적정 금액 판단은 아닙니다.</p><div class="loan-glance-grid">${workingCard}${facilityCard}</div>${requestedWorking && requestedFacility ? `<div class="loan-combined"><strong>두 자금을 함께 보면</strong><span>운전자금 회수월과 시설자금 원리금 납부월이 겹치는지 확인</span><span>기존 차입 만기표를 받아 월별 현금부담 대조</span></div>` : ""}`;
 }
@@ -1382,18 +1423,26 @@ function renderInspection() {
   const items = state.analysis.inspection;
   const profile = industryProfile();
   const counts = items.reduce((map, item) => map.set(item.ruleSource, (map.get(item.ruleSource) || 0) + 1), new Map());
-  $("#inspection-context").innerHTML = `<div><b>${escapeHtml(profile.label)} 현장실사 관점</b><p>${escapeHtml(profile.site)}</p>${state.publicDemo ? "<p>공개 체험판에서는 증빙파일을 저장하지 않습니다. PDF·사진 첨부는 로컬판에서 사용하세요.</p>" : ""}</div><div class="inspection-rules"><b>체크리스트 생성 규칙</b><p>공통통제 → 업종 → 재무 위험신호 → 신청 자금용도 순으로 항목을 합치고 중복 질문을 제거합니다.</p>${[...counts].map(([name, count]) => `<span>${escapeHtml(name)} ${count}개</span>`).join("")}</div>`;
-  $("#utilization-box").hidden = profile.id !== "manufacturing";
+  const utilizationBox = $("#utilization-box");
+  $("#inspection-context").after(utilizationBox);
+  $("#inspection-context").innerHTML = `<div><b>${escapeHtml(profile.label)} 현장실사 관점</b><p>${escapeHtml(profile.site)}</p>${state.publicDemo ? "<p>PDF·사진은 이 브라우저 탭에서만 임시 첨부합니다. 서버에 보내거나 보관하지 않으며, 탭을 닫으면 파일이 사라집니다. 실제 고객자료는 올리지 마세요.</p>" : ""}</div><div class="inspection-rules"><b>체크리스트 생성 규칙</b><p>공통통제 → 업종 → 재무 위험신호 → 신청 자금용도 순으로 항목을 합치고 중복 질문을 제거합니다.</p>${[...counts].map(([name, count]) => `<span>${escapeHtml(name)} ${count}개</span>`).join("")}</div>`;
+  utilizationBox.hidden = profile.id !== "manufacturing";
   $("#inspection-list").innerHTML = items.map((item, index) => {
     const detail = state.inspectionDetails[index] || {};
     const selected = state.inspectionStatus[index] || "미확인";
     const [observationHint, evidenceHint, followUpHint] = inspectionGuidance(item);
     const files = inspectionAttachments(item);
-    const fileList = files.length ? `<ul class="inspection-attached-files">${files.map((file) => `<li><a href="/api/cases/${encodeURIComponent(state.caseId)}/evidence/${encodeURIComponent(file.id)}" download="${escapeHtml(file.name)}">${escapeHtml(file.name)}</a><small>검증 전 · ${new Date(file.uploadedAt).toLocaleDateString("ko-KR")} · SHA256 ${escapeHtml(file.sha256?.slice(0, 12))}…</small></li>`).join("")}</ul>` : "";
-    const upload = state.publicDemo ? "" : `<div class="inspection-file-upload"><input type="file" data-inspection-file="${index}" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" hidden /><button type="button" class="secondary-button" data-inspection-upload="${index}">PDF·사진 첨부</button><small>이 항목에 연결해 로컬 저장 · 파일당 10MB 이하 · 자동 판독 없음</small>${fileList}</div>`;
+    const fileList = files.length ? `<ul class="inspection-attached-files">${files.map((file) => `<li><a href="${file.sessionOnly ? escapeHtml(file.objectUrl) : `/api/cases/${encodeURIComponent(state.caseId)}/evidence/${encodeURIComponent(file.id)}`}" download="${escapeHtml(file.name)}">${escapeHtml(file.name)}</a><small>${file.sessionOnly ? "브라우저 탭에만 임시 첨부" : "로컬 사건에 저장"} · 검증 전 · SHA256 ${escapeHtml(file.sha256?.slice(0, 12))}…</small></li>`).join("")}</ul>` : "";
+    const upload = `<div class="inspection-file-upload"><input type="file" data-inspection-file="${index}" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" hidden /><button type="button" class="secondary-button" data-inspection-upload="${index}">PDF·사진 첨부</button><small>${state.publicDemo ? "이 탭에서만 임시 첨부 · 서버 저장 없음 · 실제 고객자료 금지" : "이 항목에 연결해 로컬 저장"} · 파일당 10MB 이하 · 자동 판독 없음</small>${fileList}</div>`;
     const options = [["미확인", "미확인"], ["확인", "정상 확인"], ["이상징후", "우려 확인"], ["자료요청", "자료 요청"]].map(([value, label]) => `<option value="${value}" ${selected === value ? "selected" : ""}>${label}</option>`).join("");
     return `<article class="inspection-item"><div class="inspection-item-head"><span class="category">${escapeHtml(item.category)}<small>${escapeHtml(item.ruleSource)}</small></span><div><h3>${escapeHtml(item.question)}</h3><p>${escapeHtml(item.reason)}</p></div><label>현장 판단<select data-inspection="${index}">${options}</select></label></div><div class="inspection-detail-fields"><label>관찰한 사실<textarea data-inspection-note="${index}" data-field="observation" rows="2" placeholder="${escapeHtml(observationHint)}">${escapeHtml(detail.observation || "")}</textarea></label><div class="inspection-evidence-field"><label>확인 근거·증빙<textarea data-inspection-note="${index}" data-field="evidence" rows="2" placeholder="${escapeHtml(evidenceHint)}">${escapeHtml(detail.evidence || "")}</textarea></label>${upload}</div><label>심사 영향·후속조치<textarea data-inspection-note="${index}" data-field="followUp" rows="2" placeholder="${escapeHtml(followUpHint)}">${escapeHtml(detail.followUp || "")}</textarea></label></div><small class="inspection-entry-state" data-inspection-state="${index}"></small></article>`;
   }).join("");
+  if (!utilizationBox.hidden) {
+    const targetIndex = items.findIndex((item) => item.category === "생산" && /가동|생산라인/.test(item.question));
+    const fallbackIndex = items.findIndex((item) => /가동률/.test(item.question));
+    const target = $("#inspection-list").children[targetIndex >= 0 ? targetIndex : fallbackIndex];
+    if (target) target.append(utilizationBox);
+  }
   updateInspectionProgress();
 }
 
@@ -1445,13 +1494,13 @@ $("#inspection-list").addEventListener("input", (event) => {
 
 $("#inspection-list").addEventListener("click", (event) => {
   const button = event.target.closest("button[data-inspection-upload]");
-  if (!button || state.publicDemo) return;
+  if (!button) return;
   $("#inspection-list").querySelector(`input[data-inspection-file="${button.dataset.inspectionUpload}"]`)?.click();
 });
 
 $("#inspection-list").addEventListener("change", async (event) => {
   const input = event.target.closest("input[data-inspection-file]");
-  if (!input || state.publicDemo || !input.files?.[0]) return;
+  if (!input || !input.files?.[0]) return;
   const index = Number(input.dataset.inspectionFile);
   const item = state.analysis?.inspection?.[index];
   if (!item) return;
@@ -1461,10 +1510,10 @@ $("#inspection-list").addEventListener("change", async (event) => {
     const file = input.files[0];
     if (!/\.(pdf|png|jpe?g)$/i.test(file.name)) throw new Error("PDF·PNG·JPG 파일만 첨부할 수 있습니다.");
     if (file.size > 10_000_000) throw new Error("파일당 10MB 이하여야 합니다.");
-    if (!state.caseId) await saveCurrentCase();
+    if (!state.publicDemo && !state.caseId) await saveCurrentCase();
     const attachment = await uploadEvidenceFile(file, { inspectionId: item.ruleId, findingId: item.ruleId.startsWith("FI-R-") ? item.ruleId.slice(5) : "" });
     state.attachments.push(attachment);
-    await saveCurrentCase();
+    if (!state.publicDemo) await saveCurrentCase();
     renderInspection();
     renderEvidenceReview();
     renderReport();
@@ -1561,7 +1610,7 @@ async function updateReviewOutcome() {
   if (!state.analysis) return;
   const runId = ++reviewRunId;
   const awaiting = { working: state.analysis.loanRequest.workingAmount > 0 ? { status: "자료요청", missingInputs: ["월별 현금수지"] } : { status: "신청 없음" }, facility: state.analysis.loanRequest.facilityAmount > 0 ? { status: "자료요청", missingInputs: ["연간 현금수지"] } : { status: "신청 없음" } };
-  const response = await fetchJson("/api/review-outcome", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ assessment: combinedReviewAssessment(), reviews: currentFindingReviews(), attachments: state.attachments, structure: state.structure || awaiting }) });
+  const response = await fetchJson("/api/review-outcome", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ assessment: combinedReviewAssessment(), reviews: currentFindingReviews(), attachments: state.publicDemo ? [] : state.attachments, structure: state.structure || awaiting }) });
   if (runId !== reviewRunId) return;
   state.reviewOutcome = response;
   renderReviewOutcome(); renderReport();
@@ -1592,8 +1641,13 @@ $("#evidence-review-list").addEventListener("change", (event) => {
 });
 
 async function uploadEvidenceFile(file, association = {}) {
-  if (!state.caseId) throw new Error("먼저 사건을 저장해 주세요.");
   if (file.size > 10_000_000) throw new Error("파일당 10MB 이하여야 합니다.");
+  if (state.publicDemo) {
+    const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+    const sha256 = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+    return { id: crypto.randomUUID(), name: file.name, size: file.size, sha256, status: "임시 첨부 · 서버 미전송", uploadedAt: new Date().toISOString(), objectUrl: URL.createObjectURL(file), sessionOnly: true, ...association };
+  }
+  if (!state.caseId) throw new Error("먼저 사건을 저장해 주세요.");
   const base64 = await new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result).split(",")[1]);

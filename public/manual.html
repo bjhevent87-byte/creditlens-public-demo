@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CreditLens · 비상장기업 제출자료 분석</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/ux-refresh.css" />
+  <link rel="stylesheet" href="/manual.css" />
+</head>
+<body class="manual-page">
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="CreditLens 홈"><span class="brand-mark">CL</span><span><strong>CreditLens</strong><small>기업여신 의사결정 지원</small></span></a>
+    <nav class="borrower-mode-nav" aria-label="기업 자료 유형"><a href="/">상장·공시기업</a><a class="active" aria-current="page" href="/manual.html">비상장·제출자료</a></nav>
+    <span class="manual-top-note">고객 제출자료 · 원본 대조 전</span>
+  </header>
+  <main class="manual-shell">
+    <div class="manual-intro"><p class="eyebrow">PRIVATE COMPANY / LOCAL FIRST</p><h1>비상장기업도 같은 기준으로,<br><em>자료 출처는 더 엄격하게.</em></h1><p>공시 수치가 없는 기업은 고객이 제출한 연간 재무 CSV로 먼저 계산합니다. 사업보고서·감사보고서 PDF는 원본 대조자료로 연결하며, 수치를 자동으로 읽었다고 표시하지 않습니다.</p><div class="manual-scope"><span>① 고객 제출 CSV</span><span>② 재무 검증·추세</span><span>③ 원본 대조 과제</span></div></div>
+    <div id="manual-public-lock" class="manual-lock" hidden><h2>공개 데모에서는 고객자료를 받지 않습니다</h2><p>로그인·접근통제가 없는 공개 사이트에 실제 기업 재무자료를 전송하지 않기 위한 조치입니다. 이 화면은 기능 구조를 보여주며, CSV 분석은 PC에서 실행하는 로컬판에서 사용해 주세요.</p><a href="/">공시자료 기반 분석으로 돌아가기 →</a></div>
+    <section class="manual-grid" id="manual-workspace" hidden>
+      <form class="manual-card" id="manual-form">
+        <div class="manual-card-heading"><span>01 / 입력</span><h2>고객 제출 재무자료</h2><p>금액은 선택한 단위로 입력하고, 빈칸을 0으로 바꾸지 않습니다.</p></div>
+        <div class="manual-fields"><label>기업명<input id="manual-name" required minlength="2" maxlength="100" placeholder="예: ○○정밀 주식회사" /></label><label>업종·주요 사업<input id="manual-industry" maxlength="100" placeholder="예: 자동차 부품 제조업" /></label><label>운전자금 요청액 (억원)<input id="manual-working" type="number" min="0" value="0" /></label><label>시설자금 요청액 (억원)<input id="manual-facility" type="number" min="0" value="0" /></label><label>CSV 금액 단위<select id="manual-unit"><option>억원</option><option>백만원</option><option>천원</option><option>원</option></select></label></div>
+        <div class="manual-file"><div><b>연간 재무 CSV · 2~4개년</b><small>기간별 별도재무제표. 필수 열: 연도·매출·영업이익·영업현금흐름·자산·부채·자본.</small></div><input id="manual-csv" type="file" accept=".csv,text/csv" required /><button class="secondary-button" id="manual-template" type="button">CSV 양식 내려받기</button></div>
+        <div class="manual-file"><div><b>사업·감사보고서 PDF · 선택</b><small>이 브라우저 탭에서 파일명·SHA256을 대조용으로 표시합니다. PDF의 수치는 아직 자동 추출하지 않습니다.</small></div><input id="manual-pdf" type="file" accept=".pdf,application/pdf" multiple /><div id="manual-pdf-list" class="manual-file-list">첨부 원본 없음</div></div>
+        <p class="manual-warning">원본 파일의 진위, 감사의견, 주석상 담보·보증·차입만기는 담당자가 확인해야 합니다. 자동 승인·한도 산정에 사용하지 마세요.</p>
+        <button class="primary-button" type="submit">제출 재무자료 분석 <b>→</b></button><p id="manual-status" role="status">CSV 양식을 내려받아 재무제표 값을 입력해 주세요.</p>
+      </form>
+      <aside class="manual-card manual-guide"><span>02 / 검증 원칙</span><h2>숫자를 먼저 믿지 않습니다</h2><ol><li><b>연도·단위 대조</b><p>2~4개년 자료와 금액 단위가 맞는지 확인합니다.</p></li><li><b>재무상태표 일치</b><p>자산=부채+자본이 어긋나면 분석을 멈춥니다.</p></li><li><b>현금흐름 교차확인</b><p>영업·투자·재무 현금흐름과 현금잔액 차이를 표시합니다.</p></li><li><b>원본·주석 확인</b><p>CSV와 PDF의 계정 정의·감사의견·차입조건은 자동 확정하지 않습니다.</p></li></ol><p>사업보고서 제출대상 비상장법인은 공시 검색에 잡힐 수 있습니다. 이 경우 <a href="/">상장·공시기업 분석</a>도 먼저 확인하세요.</p></aside>
+    </section>
+    <section class="manual-results" id="manual-results" hidden aria-live="polite"></section>
+  </main>
+  <script src="/manual.js" defer></script>
+</body>
+</html>

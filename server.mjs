@@ -17,6 +17,7 @@ import { buildLoanStructure } from "./src/services/loan-structure-service.mjs";
 import { buildReviewOutcome } from "./src/services/review-outcome-service.mjs";
 import { CaseRepository } from "./src/services/case-service.mjs";
 import { buildInterimTrend } from "./src/services/interim-service.mjs";
+import { parseManualStatementsCsv } from "./src/services/manual-statement-service.mjs";
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(ROOT, "public");
@@ -94,6 +95,7 @@ function buildStatementView({ rawRecords, loanRequest, macroRows, company }) {
 }
 
 async function assembleAnalysis({ company, companyInfo, statementSets, loanRequest, macroRows, mode, errors = [], requestedYear = null, latestAvailableYear = null, yearFallback = false, supplementary = {} }) {
+  const manualSource = mode.startsWith("고객제출");
   const statementViews = Object.fromEntries(Object.entries(statementSets).map(([fsDiv, rawRecords]) => [fsDiv, buildStatementView({ rawRecords, loanRequest, macroRows, company: { ...company, companyInfo } })]));
   const primaryFsDiv = statementViews.OFS ? "OFS" : Object.keys(statementViews)[0];
   const primary = statementViews[primaryFsDiv];
@@ -138,9 +140,9 @@ async function assembleAnalysis({ company, companyInfo, statementSets, loanReque
       errors,
       validations,
       notices: [
-        yearFallback ? `요청 기준연도 ${requestedYear}년의 연간 사업보고서가 없어 최신 가용 ${latestAvailableYear}년부터 과거 3개년을 표시함` : "요청 기준연도의 연간 사업보고서 반영",
+        manualSource ? "고객 제출 CSV 수치는 입력값 검증 단계이며 외부감사·공시 원본과 대조되지 않음" : yearFallback ? `요청 기준연도 ${requestedYear}년의 연간 사업보고서가 없어 최신 가용 ${latestAvailableYear}년부터 과거 3개년을 표시함` : "요청 기준연도의 연간 사업보고서 반영",
         primaryFsDiv === "OFS" ? "차주 법인의 상환능력은 별도재무제표를 기본으로 분석" : "별도재무제표 부재로 연결재무제표를 기본 사용",
-        "연결재무제표는 그룹 지원·부담 위험을 확인하는 보조 화면", "결측값은 0으로 대체하지 않음", "현금흐름 합계와 현금잔액 차이는 환율효과 등으로 발생할 수 있어 원문 조정항목 확인 필요", "공시 이후 변동은 최신 정기보고서와 고객 제출자료로 보완 필요",
+        "연결재무제표는 그룹 지원·부담 위험을 확인하는 보조 화면", "결측값은 0으로 대체하지 않음", "현금흐름 합계와 현금잔액 차이는 환율효과 등으로 발생할 수 있어 원문 조정항목 확인 필요", manualSource ? "사업보고서·감사보고서 PDF는 수치 자동추출 전이며 담당자가 CSV 대입값과 원문을 대조해야 함" : "공시 이후 변동은 최신 정기보고서와 고객 제출자료로 보완 필요",
         primaryInterimTrend ? `최신 ${primaryInterimTrend.period} ${primaryFsDiv === "OFS" ? "별도" : "연결"} 자료를 전년 동기와 비교` : "최신 중간재무 비교자료가 없어 최근 실적 확인 필요",
         supplementary.audit?.opinions?.some((opinion) => !String(opinion).includes("적정")) ? "감사의견 중 적정 이외 표현이 있어 원문 확인 필요" : "감사의견 원문과 핵심감사사항 확인 필요",
       ],
@@ -152,6 +154,7 @@ async function api(req, res, url) {
   if (req.method === "POST" && req.headers.origin && new URL(req.headers.origin).host !== req.headers.host) return sendJson(res, 403, { error: "동일한 웹페이지에서만 입력할 수 있습니다." });
   if (url.pathname === "/api/health") return sendJson(res, 200, { ok: true, port: PORT, publicDemo: PUBLIC_DEMO, dart: dart.configured, ecos: macro.configured, kosis: kosis.configured, basisDate: kstDate() });
   if (PUBLIC_DEMO && url.pathname.startsWith("/api/cases")) return sendJson(res, 403, { error: "공개 데모에서는 사건·증빙 저장이 비활성화됩니다. 로컬판에서 사용해 주세요." });
+  if (PUBLIC_DEMO && url.pathname === "/api/manual-analysis") return sendJson(res, 403, { error: "공개 데모에서는 고객 제출 재무자료를 받지 않습니다. 로컬판에서 사용해 주세요." });
   if (url.pathname === "/api/config") return sendJson(res, 200, {
     services: [
       { id: "dart", name: "OpenDART", configured: dart.configured, role: "기업개요·3개년 재무" },
@@ -168,6 +171,17 @@ async function api(req, res, url) {
   }
   if (url.pathname === "/api/companies") {
     return sendJson(res, 200, { companies: await companies.search(url.searchParams.get("q") || "", 15) });
+  }
+  if (url.pathname === "/api/manual-analysis" && req.method === "POST") {
+    const input = await parseJsonBody(req, 250_000);
+    const name = String(input.companyName || "").trim().slice(0, 100);
+    if (name.length < 2) return sendJson(res, 400, { error: "기업명을 두 글자 이상 입력해 주세요." });
+    let records;
+    try { records = parseManualStatementsCsv(input.csvText, { unit: input.unit }); }
+    catch (error) { return sendJson(res, 400, { error: error.message }); }
+    const company = { name, stockCode: "", corpCode: "CUSTOMER", industry: String(input.industry || "업종 확인 필요").trim().slice(0, 100) };
+    const loanRequest = normalizeLoanRequest(input.loanRequest);
+    return sendJson(res, 200, await assembleAnalysis({ company, companyInfo: null, statementSets: { OFS: records }, loanRequest, macroRows: [], mode: "고객제출 CSV · 원본 미검증", requestedYear: Number(records.at(-1).period), latestAvailableYear: Number(records.at(-1).period) }));
   }
   if (url.pathname === "/api/analyze" && req.method === "POST") {
     const input = await parseJsonBody(req);

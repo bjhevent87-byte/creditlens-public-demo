@@ -18,6 +18,7 @@ test("공시의 유동·비유동 차입금 표준계정으로 차입 비중을 
   assert.ok(Math.abs(record.shortTermDebtShare - 19.49) < 0.02);
 });
 import { MacroService } from "../src/services/macro-service.mjs";
+import { parseManualStatementsCsv } from "../src/services/manual-statement-service.mjs";
 import { buildLoanStructure } from "../src/services/loan-structure-service.mjs";
 import { buildReviewOutcome } from "../src/services/review-outcome-service.mjs";
 import { CaseRepository } from "../src/services/case-service.mjs";
@@ -210,6 +211,17 @@ test("ECOS는 첫 100건이 아니라 전체 페이지의 최신값을 선택한
   const result = await service.latest({ id: "test", name: "테스트", code: "X", frequency: "D", items: ["Y"], unit: "%" });
   assert.equal(result.latest.date, "20261008");
   assert.equal(result.paginationComplete, true);
+  assert.equal(result.history.at(-1).date, "20261008");
+  assert.ok(result.history.length <= 90);
+});
+
+test("고객 제출 CSV는 단위를 환산하고 자산=부채+자본을 검증한다", () => {
+  const csv = "period,revenue,operatingProfit,operatingCashFlow,totalAssets,totalLiabilities,equity\n2024,100,10,8,200,80,120\n2025,120,11,9,220,90,130\n";
+  const records = parseManualStatementsCsv(csv, { unit: "억원" });
+  assert.equal(records[1].revenue, 12_000_000_000);
+  assert.equal(records[1].totalAssets, records[1].totalLiabilities + records[1].equity);
+  assert.equal(records[1].netIncome, null);
+  assert.throws(() => parseManualStatementsCsv(csv.replace("220,90,130", "220,90,100"), { unit: "억원" }), /자산=부채\+자본/);
 });
 
 test("3개년 재무를 5개 경영성과 축과 검증 가설로 정리한다", () => {

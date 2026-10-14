@@ -54,7 +54,10 @@ export class MacroService {
       const valid = rows.map((row) => ({ date: row.TIME, value: Number(row.DATA_VALUE) })).filter((row) => Number.isFinite(row.value)).sort((a, b) => a.date.localeCompare(b.date));
       const latest = valid.at(-1);
       const previous = valid.at(-2);
-      const result = { ...meta, status: latest ? "확인" : "자료없음", latest, previous, source: "한국은행 ECOS", collectedAt: new Date().toISOString(), paginationComplete: Number.isFinite(totalCount) && rows.length >= totalCount };
+      const history = meta.frequency === "D"
+        ? valid.filter((row) => latest && row.date >= dateText(new Date(Date.UTC(Number(latest.date.slice(0, 4)), Number(latest.date.slice(4, 6)) - 1, Number(latest.date.slice(6, 8))) - 90 * 86_400_000))).slice(-90)
+        : valid.slice(-6);
+      const result = { ...meta, status: latest ? "확인" : "자료없음", latest, previous, history, source: "한국은행 ECOS", collectedAt: new Date().toISOString(), paginationComplete: Number.isFinite(totalCount) && rows.length >= totalCount };
       this.cache.set(key, result);
       return result;
     } catch (error) {
