@@ -69,7 +69,7 @@ $("#manual-template").addEventListener("click", () => {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
 
-$("#manual-sample").addEventListener("click", () => {
+$("#manual-sample").addEventListener("click", async () => {
   const columns = ["period", "revenue", "operatingProfit", "netIncome", "costOfSales", "operatingCashFlow", "investingCashFlow", "financingCashFlow", "cash", "totalAssets", "totalLiabilities", "equity", "currentAssets", "currentLiabilities", "accountsReceivable", "inventory", "accountsPayable", "shortTermDebt", "longTermDebt", "financeCosts", "interestExpense", "capex", "intangibleCapex"];
   const rows = [
     { period: 2023, revenue: 240, operatingProfit: 22, netIncome: 15, costOfSales: 180, operatingCashFlow: 18, investingCashFlow: -15, financingCashFlow: 4, cash: 45, totalAssets: 420, totalLiabilities: 190, equity: 230, currentAssets: 180, currentLiabilities: 120, accountsReceivable: 55, inventory: 70, accountsPayable: 43, shortTermDebt: 45, longTermDebt: 75, financeCosts: 6, interestExpense: 5, capex: 14, intangibleCapex: 1 },
@@ -88,7 +88,17 @@ $("#manual-sample").addEventListener("click", () => {
   $("#manual-basis").value = "OFS";
   $("#manual-standard").value = "확인 전";
   reviewCorrections = [];
-  $("#manual-status").textContent = "가상 재무자료 3개년을 채웠습니다. ‘제출 재무자료 분석’을 누르면 계산 결과를 볼 수 있습니다.";
+  try {
+    const response = await fetch("/sample-abprecision-2023-2025.pdf");
+    if (!response.ok) throw new Error("가상 원본 PDF를 불러오지 못했습니다.");
+    const pdfTransfer = new DataTransfer();
+    pdfTransfer.items.add(new File([await response.blob()], "가상_에이비정밀_별도재무제표_2023-2025.pdf", { type: "application/pdf" }));
+    $("#manual-pdf").files = pdfTransfer.files;
+    $("#manual-pdf").dispatchEvent(new Event("change"));
+    $("#manual-status").textContent = "가상기업 CSV와 원본 PDF를 채웠습니다. PDF 2쪽의 2025년 유동자산을 CSV와 대조해 보세요.";
+  } catch {
+    $("#manual-status").textContent = "가상기업 CSV를 채웠습니다. 원본 PDF는 위 링크에서 별도로 열어 주세요.";
+  }
 });
 
 function renderResult(analysis) {

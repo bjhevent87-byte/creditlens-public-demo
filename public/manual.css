@@ -76,6 +76,7 @@
 .manual-file { display: grid; gap: 10px; margin: 15px 0; padding: 18px; border: 1px solid #dde8f3; border-radius: 13px; background: #f9fbfe; }
 .manual-file b { display: block; color: #1e334f; font-size: 17px; }.manual-file small { display: block; margin-top: 4px; color: #61748a; font-size: 14px; line-height: 1.55; }
 .manual-file .secondary-button { justify-self: start; }.manual-file-list { color: #52667c; font-size: 14px; overflow-wrap: anywhere; }.manual-file-list a { color: #1765d1; }
+.manual-sample-pdf-link { display: inline-flex; align-items: center; justify-content: center; justify-self: start; width: auto; font-size: 15px; }
 .manual-warning { padding: 13px 16px; border-radius: 10px; color: #6c4b1f; background: #fff4e6; font-size: 15px; line-height: 1.55; }
 #manual-status { min-height: 1.6em; color: #526984; font-size: 15px; }
 .manual-guide ol { padding-left: 22px; }.manual-guide li { padding: 13px 0; border-bottom: 1px solid #e8eef5; }.manual-guide li b { color: #1b3656; font-size: 17px; }.manual-guide li p { margin: 5px 0 0; }.manual-guide a, .manual-lock a { color: #1765d1; font-weight: 800; }

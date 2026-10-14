@@ -147,6 +147,13 @@ export function inspectManualStatementsCsv(csvText, { unit = "억원", sourceNam
       const fields = ["totalAssets", "totalLiabilities", "equity"];
       add({ id: `${record.period}-balance`, period: record.period, type: "balance", severity: "blocking", title: "자산·부채·자본 합계 불일치", detail: `자산 - 부채 - 자본 차이 ${(gap / 100_000_000).toLocaleString("ko-KR", { maximumFractionDigits: 2 })}억원. 세 계정 중 어느 값·단위가 잘못됐는지 원문에서 확인하세요.`, fields, affects: ["부채비율", "ROA", "재무구조 판단"], values: valuesFor(fields) });
     }
+    const currentAssetFields = ["currentAssets", "cash", "accountsReceivable", "inventory"];
+    if (currentAssetFields.every((field) => Number.isFinite(record[field]))) {
+      const components = record.cash + record.accountsReceivable + record.inventory;
+      if (record.currentAssets + 1_000_000 < components) {
+        add({ id: `${record.period}-current-assets`, period: record.period, type: "current-assets-components", severity: "blocking", title: "유동자산보다 주요 구성계정 합계가 큽니다", detail: `현금·매출채권·재고 합계 ${(components / 100_000_000).toLocaleString("ko-KR", { maximumFractionDigits: 2 })}억원이 유동자산 ${(record.currentAssets / 100_000_000).toLocaleString("ko-KR", { maximumFractionDigits: 2 })}억원보다 큽니다. 네 계정이 모두 유동으로 분류된다는 전제에서 원문 수치·계정 범위를 대조하세요.`, fields: currentAssetFields, affects: ["유동비율", "운전자금 회전", "단기 상환능력"], values: valuesFor(currentAssetFields) });
+      }
+    }
     if (index > 0) {
       const previous = normalized[index - 1];
       const fields = ["operatingCashFlow", "investingCashFlow", "financingCashFlow", "cash"];

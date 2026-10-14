@@ -33,3 +33,16 @@ test("목적별 필수 보조계정이 없으면 0으로 만들지 않고 확인
   assert.equal(found.records.at(-1).financeCosts, null);
   assert.ok(found.issues.some((item) => item.id === "2025-financeCosts" && item.severity === "review"));
 });
+
+test("가상기업 CSV의 유동자산 오기를 원본 대조 과제로 표시하고 수정 후 해소한다", () => {
+  const input = [
+    "period,revenue,operatingProfit,operatingCashFlow,totalAssets,totalLiabilities,equity,currentAssets,cash,accountsReceivable,inventory",
+    "2024,265,27,21,455,205,250,195,51,65,77",
+    "2025,290,20,8,490,230,260,205,48,80,92",
+  ].join("\n");
+  const found = inspectManualStatementsCsv(input, { unit: "억원" });
+  assert.equal(found.issues.find((issue) => issue.type === "current-assets-components")?.severity, "blocking");
+  const corrected = inspectManualStatementsCsv(input, { unit: "억원", overrides: [{ period: "2025", field: "currentAssets", value: "230", page: "가상 원본 p.2", note: "유동자산 대조" }] });
+  assert.equal(corrected.issues.some((issue) => issue.type === "current-assets-components"), false);
+  assert.equal(corrected.records.at(-1).currentAssets, 230 * 100_000_000);
+});
