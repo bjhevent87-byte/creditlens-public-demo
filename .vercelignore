@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+.vercel
+node_modules
+data/cases
+data/*.log
+tests
+uploads
+reports
+START_AUTO.vbs
+START_LOCAL.cmd

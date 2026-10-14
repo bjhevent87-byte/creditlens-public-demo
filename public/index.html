@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="공시·산업·거시 데이터를 연결해 기업여신 검토 질문과 현장실사 항목을 만드는 로컬 의사결정 지원 도구" />
+  <title>CreditLens 기업여신 의사결정 지원</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/ux-refresh.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#top" aria-label="CreditLens 홈">
+      <span class="brand-mark">CL</span>
+      <span><strong>CreditLens</strong><small>기업여신 의사결정 지원</small></span>
+    </a>
+    <div class="top-meta">
+      <span class="live-dot"></span>
+      <span id="api-summary">API 상태 확인 중</span>
+      <span id="basis-date"></span>
+    </div>
+  </header>
+
+  <div class="app-shell" id="top">
+    <aside class="sidebar" aria-label="분석 메뉴">
+      <p class="side-label">WORKFLOW</p>
+      <a class="active" href="#overview" data-workflow-nav="analysis"><span>01</span>분석결과</a>
+      <a href="#inspection" data-workflow-nav="inspection"><span>02</span>현장실사 기록</a>
+      <a href="#report" data-workflow-nav="opinion"><span>03</span>심사의견</a>
+      <div class="side-note">
+        <strong>판단 원칙</strong>
+        <p>사실과 해석을 분리하고, 자동 승인 대신 다음 확인사항을 제시합니다.</p>
+      </div>
+    </aside>
+
+    <main class="content">
+      <section class="hero" id="inquiry">
+        <div class="hero-copy">
+          <p class="eyebrow">CORPORATE CREDIT WORKBENCH</p>
+          <h1>기업여신 검토,<br /><em>근거부터 명확하게</em></h1>
+          <p>최신 공시의 변화와 상환재원을 먼저 읽고, 현장 확인을 거쳐 자금용도별 심사의견으로 연결합니다.</p>
+        </div>
+        <div class="principles" aria-label="분석 원칙">
+          <div><b>01</b><span>원금상환 재원 우선</span></div>
+          <div><b>02</b><span>사실과 해석 분리</span></div>
+          <div><b>03</b><span>출처와 기준일 추적</span></div>
+        </div>
+      </section>
+
+      <section class="inquiry-grid">
+        <form class="inquiry-card" id="analysis-form">
+          <div class="section-heading compact">
+            <div><p class="eyebrow">NEW REVIEW</p><h2>여신 상담 입력</h2></div>
+            <button class="text-button" type="button" id="demo-button">2차전지 예시 불러오기</button>
+          </div>
+          <label class="field full">
+            <span>기업명 또는 종목코드</span>
+            <div class="search-box"><input id="company-search" autocomplete="off" placeholder="예: 이마트, 139480" /><span>⌕</span></div>
+            <div class="search-results" id="search-results" hidden></div>
+            <small id="selected-company">기업을 검색해 선택하세요.</small>
+          </label>
+          <div class="form-row">
+            <label class="field"><span>운전자금</span><div class="amount-input"><input id="working-amount" type="number" min="0" value="10" /><b>억원</b></div></label>
+            <label class="field"><span>기간</span><select id="working-term"><option value="6">6개월</option><option value="12" selected>12개월</option><option value="24">24개월</option></select></label>
+          </div>
+          <div class="form-row">
+            <label class="field"><span>시설자금</span><div class="amount-input"><input id="facility-amount" type="number" min="0" value="100" /><b>억원</b></div></label>
+            <label class="field"><span>기간</span><select id="facility-term"><option value="36">3년</option><option value="60" selected>5년</option><option value="84">7년</option></select></label>
+          </div>
+          <details class="input-disclosure" hidden><summary>금리·상환방식 가정 입력 <span>상환구조 계산에 필요</span></summary>
+            <div class="form-row"><label class="field"><span>운전자금 가정 금리(연 %)</span><input id="working-rate" type="number" min="0" max="30" step="0.1" placeholder="은행 제시금리 아님" /></label><label class="field"><span>금리 유형</span><select id="working-rate-type"><option value="floating">변동</option><option value="fixed">고정</option></select></label></div>
+            <div class="form-row"><label class="field"><span>시설자금 가정 금리(연 %)</span><input id="facility-rate" type="number" min="0" max="30" step="0.1" placeholder="은행 제시금리 아님" /></label><label class="field"><span>금리 유형</span><select id="facility-rate-type"><option value="floating">변동</option><option value="fixed">고정</option></select></label></div>
+            <div class="form-row"><label class="field"><span>운전자금 상환</span><select id="working-repayment"><option value="bullet">만기일시</option><option value="equal-principal">원금균등</option></select></label><label class="field"><span>시설자금 상환</span><select id="facility-repayment"><option value="equal-principal">원금균등</option><option value="bullet">만기일시</option></select></label></div>
+            <label class="field"><span>시설자금 거치기간(개월)</span><input id="facility-grace" type="number" min="0" max="83" value="0" /></label>
+            <p>금리는 사용자가 입력하는 검토 가정이며 은행의 실제 제안금리가 아닙니다.</p>
+          </details>
+          <div class="form-row">
+            <label class="field"><span>분석 기준연도</span><select id="end-year"></select></label>
+            <label class="field"><span>예정 방문일</span><input id="visit-date" type="date" /></label>
+          </div>
+          <label class="field full"><span>자금 목적 및 상담 메모</span><textarea id="purpose" rows="3" placeholder="예: 원재료 매입 운전자금과 생산라인 증설"></textarea></label>
+          <p class="privacy-note" id="privacy-note" hidden>공개 체험판에서는 사건·증빙이 서버에 저장되지 않습니다. 실제 고객정보 대신 가상 정보로 시험해 주세요.</p>
+          <button class="primary-button" type="submit"><span>공식 데이터로 분석 시작</span><b>→</b></button>
+          <p class="form-status" id="form-status">API 키가 없더라도 교육용 예시로 전체 흐름을 확인할 수 있습니다.</p>
+        </form>
+
+        <div class="workflow-card">
+          <p class="eyebrow">DECISION CHAIN</p>
+          <h2>검토는 세 단계로</h2>
+          <ol>
+            <li><b>분석결과</b><span>최신 공시·상환재원·자금용도별 쟁점</span></li>
+            <li><b>현장실사 기록</b><span>관찰한 사실·증빙·후속조치를 항목별 작성</span></li>
+            <li><b>심사의견</b><span>해소된 우려와 미해소 쟁점을 구분</span></li>
+          </ol>
+          <div class="api-stack" id="api-stack"></div>
+          <div class="saved-case-quick"><h3>저장된 사건 다시 열기</h3><div id="saved-cases"></div></div>
+        </div>
+      </section>
+
+      <div id="empty-state" class="empty-state">
+        <div class="empty-icon">↗</div>
+        <div><h2>분석할 기업을 선택하세요</h2><p>분석 결과를 확인한 뒤 현장 관찰과 증빙을 항목별로 기록할 수 있습니다.</p></div>
+      </div>
+
+      <div id="analysis-content" hidden>
+        <section class="analysis-header" id="overview">
+          <div>
+            <p class="eyebrow">CREDIT REVIEW / <span id="analysis-mode"></span></p>
+            <h2 id="company-title"></h2>
+            <p id="company-subtitle"></p>
+          </div>
+          <div class="analysis-actions">
+            <button class="secondary-button" id="analysis-search-toggle" type="button" aria-expanded="false">분석 조건 변경</button>
+            <div class="statement-switch" id="statement-switch" aria-label="재무제표 범위"></div>
+            <span class="freshness" id="freshness"></span>
+            <button class="secondary-button" id="download-json" type="button">분석 JSON</button>
+          </div>
+        </section>
+
+        <nav class="workflow-stepbar" aria-label="여신검토 단계">
+          <button type="button" class="active" data-workflow-nav="analysis"><b>1</b><span>분석결과</span></button>
+          <button type="button" data-workflow-nav="inspection"><b>2</b><span>현장실사 기록</span></button>
+          <button type="button" data-workflow-nav="opinion"><b>3</b><span>심사의견</span></button>
+        </nav>
+        <div class="workflow-page" data-workflow-page="analysis">
+
+        <section class="summary-intro">
+          <div><p class="eyebrow">READING GUIDE</p><h2>핵심 판단 근거</h2><p id="summary-period-note" class="summary-period-note"></p></div>
+          <p>각 결과에 계산식, 실제 대입값, 비교기간과 담당자가 이어서 확인할 내용을 함께 표시합니다.</p>
+        </section>
+        <section class="summary-grid" id="summary-grid"></section>
+        <section class="recent-disclosure" id="recent-update" aria-label="최신 공시와 감사 검토"></section>
+
+        <nav class="analysis-detail-tabs" id="analysis-detail-tabs" role="tablist" aria-label="분석결과 상세 영역">
+          <button type="button" role="tab" data-analysis-detail="financial" aria-controls="analysis-financial-panel">재무·성과 <small>반기와 연간을 나눠 비교</small></button>
+          <button type="button" role="tab" data-analysis-detail="risks" aria-controls="analysis-risks-panel">위험·외부환경 <small id="analysis-risk-tab-note">확인 수치와 업종지표</small></button>
+          <button type="button" role="tab" data-analysis-detail="credit" aria-controls="analysis-credit-panel">여신·시나리오 <small>용도별 검토와 민감도</small></button>
+        </nav>
+        <div id="analysis-financial-panel" role="tabpanel">
+
+        <section class="panel" id="financials">
+          <div class="section-heading">
+            <div><p class="eyebrow">FINANCIAL SIGNALS</p><h2>재무·현금흐름 연결</h2><p id="financial-period-note">최신 중간실적과 연간 추세를 기간별로 나누어 비교합니다.</p></div>
+            <div class="data-badge" id="financial-basis"></div>
+          </div>
+          <div class="financial-period-tabs" id="financial-period-tabs" role="tablist" aria-label="재무 비교 기간">
+            <button type="button" data-financial-view="interim" role="tab" aria-controls="interim-financial-panel">최신 반기·분기</button>
+            <button type="button" data-financial-view="annual" role="tab" aria-controls="annual-financial-panel">연간 3개년</button>
+          </div>
+          <div id="interim-financial-panel" role="tabpanel" hidden>
+            <p class="period-explainer" id="interim-financial-note"></p>
+            <div class="table-wrap"><table class="data-table interim-financial-table" id="interim-financial-table"></table></div>
+          </div>
+          <div id="annual-financial-panel" role="tabpanel">
+          <div class="chart-grid">
+            <article class="chart-card"><div class="chart-title"><h3>매출과 영업현금흐름</h3><span>방향 비교</span></div><div id="cash-chart" class="svg-chart"></div><p class="chart-note">각 항목의 자체 3개년 범위로 높이를 환산해 방향을 비교합니다. 점 위 숫자는 실제 금액입니다.</p></article>
+            <article class="chart-card"><div class="chart-title"><h3>총차입금과 영업이익</h3><span>방향 비교</span></div><div id="debt-chart" class="svg-chart"></div><p class="chart-note">적자·흑자 전환을 포함해 실제 값이 개선되면 선이 올라가도록 표시합니다. 점 위 숫자는 실제 금액입니다.</p></article>
+          </div>
+          <section class="cashflow-analysis" aria-labelledby="cashflow-title">
+            <div class="cashflow-heading">
+              <div><p class="eyebrow">THREE CASH-FLOW ACTIVITIES</p><h3 id="cashflow-title">3개년 자금흐름 분석</h3><p>본업의 현금창출, 투자 집행, 외부조달·상환을 0축에서 함께 비교합니다.</p></div>
+              <span>부호가 아닌 조합으로 판단</span>
+            </div>
+            <div id="cashflow-activity-chart" class="cashflow-chart"></div>
+            <div id="cashflow-kpis" class="cashflow-kpis"></div>
+            <div id="cashflow-insights" class="cashflow-insights"></div>
+            <p class="cashflow-caution">투자활동과 재무활동은 음수라고 나쁘거나 양수라고 좋은 것이 아닙니다. CAPEX, 차입금 변동, 자산매각·배당 등 세부내역을 함께 확인합니다.</p>
+          </section>
+          <div class="table-wrap"><table class="data-table" id="financial-table"></table></div>
+          </div>
+        </section>
+
+        <section class="panel" id="performance">
+          <div class="section-heading">
+            <div><p class="eyebrow">MANAGEMENT PERFORMANCE</p><h2>재무제표 기반 경영성과 분석</h2><p id="performance-period-note">최신 중간실적과 연간 추세를 분리해 평가합니다.</p></div>
+            <div class="performance-rule">재무 주축 · 외부 요인 보조</div>
+          </div>
+          <div class="financial-period-tabs" id="performance-period-tabs" role="tablist" aria-label="경영성과 분석 기간">
+            <button type="button" data-performance-view="interim" role="tab" aria-controls="interim-performance-panel">최신 반기·분기 성과</button>
+            <button type="button" data-performance-view="annual" role="tab" aria-controls="annual-performance-panel">연간 3개년 진단</button>
+          </div>
+          <div id="interim-performance-panel" role="tabpanel" hidden></div>
+          <div id="annual-performance-panel" role="tabpanel">
+          <div class="analysis-standard"><b>판정 기준</b><span>직전연도와 비교합니다.</span><span>좋아지는 방향은 초록, 나빠지는 방향은 빨강, 유의한 변화가 없으면 회색으로 표시합니다.</span></div>
+          <aside class="performance-conclusion" id="performance-conclusion" aria-label="경영성과 핵심 요약"></aside>
+          <div class="performance-grid" id="performance-grid"></div>
+          <div class="constitution-layout">
+            <div>
+              <div class="subheading"><p class="eyebrow">OBSERVATION → HYPOTHESIS → VERIFICATION</p><h3>재무 변화 진단과 검증 계획</h3><p>관찰된 숫자에서 가능한 원인을 서술하고, 실제 자료와 질문으로 검증합니다.</p></div>
+              <div class="hypothesis-list" id="hypothesis-list"></div>
+            </div>
+          </div>
+          </div>
+        </section>
+
+        </div>
+        <div id="analysis-risks-panel" role="tabpanel" hidden>
+
+        <section class="panel" id="risks">
+          <div class="section-heading"><div><p class="eyebrow">NUMERIC REVIEW PRIORITIES</p><h2>심사자가 먼저 확인할 수치</h2><p>임계치를 벗어난 숫자와 확인자료를 빠르게 보여줍니다. <strong id="risk-period-note"></strong></p></div><span class="count-badge" id="risk-count"></span></div>
+          <div class="risk-list" id="risk-list"></div>
+        </section>
+
+        <section class="panel" id="external">
+          <div class="section-heading"><div><p class="eyebrow">COMPANY × INDUSTRY × ECONOMY</p><h2>금리·경기 및 업종 동향</h2><p>기업 업종에 맞는 지표만 선별하고 최신 수록시점과 기업에 영향을 주는 경로를 표시합니다.</p></div><div class="data-badge" id="industry-profile"></div></div>
+          <div class="industry-guide" id="industry-guide"></div>
+          <div class="macro-grid" id="macro-grid"></div>
+          <div class="interpretation-list" id="interpretation-list"></div>
+          <details class="industry-evidence"><summary><strong>선택 분석 · 업종지표 연결 <em id="industry-evidence-count"></em></strong><span>업종 통계의 방향만으로 기업 위험을 단정하지 않습니다. 실제 매출·원가 노출을 확인할 때 사용합니다.</span></summary><div class="industry-evidence-body"><p>KOSIS 지표는 공식 수치를 조회할 수 있습니다. 회사 노출비중은 고객자료로 확인해 입력하세요. 다른 출처의 수치는 수동 입력이며 검증 전으로 표시합니다.</p><label class="industry-selector"><b>관련 업종지표 선택</b><select id="industry-template"><option value="">지표를 선택하세요</option></select></label><p class="industry-source-help" id="industry-source-help">선택한 지표의 공식 통계 출처와 활용 이유를 표시합니다.</p>
+            <div class="kosis-tool" id="kosis-tool" hidden>
+              <div class="kosis-tool-heading"><strong>KOSIS 공식 수치 찾기</strong><span>① 통계표 검색 → ② 세부 계열 선택 → ③ 회사 노출 입력</span></div>
+              <div class="kosis-search-row"><input id="kosis-search" placeholder="예: 광공업생산지수, 소매업태별 판매액지수" aria-label="KOSIS 통계표 검색어" /><button class="secondary-button" id="kosis-search-button" type="button">통계표 검색</button></div>
+              <p id="kosis-status" role="status">통계표를 검색해 실제 수치와 수록시점을 확인하세요.</p>
+              <div class="kosis-pickers"><label><b>통계표</b><select id="kosis-table"><option value="">검색 결과에서 통계표 선택</option></select></label><label><b>수록주기</b><select id="kosis-frequency"><option value="">통계표 선택 후 표시</option></select></label><label><b>세부 계열</b><select id="kosis-series"><option value="">통계표와 주기 선택 후 표시</option></select></label></div>
+              <div class="kosis-search-row"><input id="kosis-series-filter" placeholder="세부 계열 검색어 (예: 계절조정 전국 자동차)" aria-label="KOSIS 세부 계열 검색어" /><button class="secondary-button" id="kosis-series-button" type="button">세부 계열 찾기</button></div>
+              <button class="secondary-button" id="kosis-apply" type="button" disabled>공식 수치 적용</button>
+            </div>
+            <div class="industry-evidence-fields"><input id="industry-name" placeholder="지표명" /><input id="industry-period" placeholder="비교기간 (예: 2026-08 → 2026-09)" /><input id="industry-latest" type="number" step="any" placeholder="최신값" /><input id="industry-previous" type="number" step="any" placeholder="이전값" /><input id="industry-exposure" type="number" min="0" max="100" placeholder="회사 매출노출 %" /><select id="industry-direction"><option value="up">증가가 유리</option><option value="down">감소가 유리</option></select><input id="industry-source" placeholder="출처 URL 또는 문서명" /><input id="industry-exposure-basis" placeholder="노출 근거 (예: 고객 제출 매출구성표)" /><button class="secondary-button" id="add-industry-evidence" type="button">지표 연결</button></div><div id="industry-evidence-list"></div></div></details>
+        </section>
+
+        </div>
+        <div id="analysis-credit-panel" role="tabpanel" hidden>
+
+        <section class="panel" id="loan-review">
+          <div class="section-heading"><div><p class="eyebrow">LOAN PURPOSE ANALYSIS</p><h2>자금용도별 검토</h2><p>운전자금은 회전과 단기 상환재원, 시설자금은 투자 타당성과 장기 현금창출력을 중심으로 봅니다.</p></div></div>
+          <div class="loan-tabs" id="loan-tabs" role="tablist"></div>
+          <div class="loan-grid" id="loan-grid"></div>
+          <p class="disclaimer" id="decision-disclaimer"></p>
+        </section>
+
+        <section class="panel" id="credit-structure" hidden>
+          <div class="section-heading"><div><p class="eyebrow">DEBT CAPACITY / INPUT-BASED</p><h2>요청금액·상환구조 검토</h2><p>적정 금액·만기를 제안하려면 고객의 현금수지와 기존 원리금 일정이 필요합니다. 공개 재무제표만으로는 계산하지 않습니다.</p></div></div>
+          <div class="data-warning">고객 입력자료와 금리·상환방식 가정으로 계산한 단순 상한입니다. 신용등급, 담보평가, 은행 내부 정책을 반영한 승인한도·제시금리가 아닙니다.</div>
+          <details class="debt-register"><summary><strong>선택 입력 · 기존 차입 상세와 만기</strong><span>기본 분석에는 필요 없음 · 금리변화·차환위험을 정밀 검토할 때 펼치기</span></summary><p>공시의 총차입금·금융비용만으로 기본 완충력을 봅니다. 차입별 명세는 변동금리 비중, 12개월 내 만기집중, 차환 가능성까지 확인할 때만 입력하세요.</p><div class="debt-register-fields"><input id="debt-lender" placeholder="금융기관·차입명" /><input id="debt-balance" type="number" min="0" step="any" placeholder="잔액 억원" /><input id="debt-maturity" type="number" min="1" step="1" placeholder="잔여만기 개월" /><input id="debt-rate" type="number" min="0" max="30" step="any" placeholder="연 금리 %" /><select id="debt-rate-type"><option value="floating">변동금리</option><option value="fixed">고정금리</option></select><input id="debt-collateral" placeholder="담보·보증 요약" /><input id="debt-source" placeholder="출처 문서명" /><button id="add-debt" class="secondary-button" type="button">차입 등록</button></div><label class="register-complete"><input id="debt-register-complete" type="checkbox" /> 전체 차입금 명세를 입력·대조했습니다 (체크 시 변동금리 비중 자동 계산)</label><div id="debt-register-list"></div></details>
+          <details class="structure-inputs"><summary><strong>추가 분석 · 고객 현금수지로 적정금액 검토</strong><span>요청액의 상환 가능성과 만기를 계산할 때만 펼치세요. 고객 제출자료가 필요합니다.</span></summary><div class="structure-fields">
+            <label><b>사용가능 기초현금(억원)</b><input id="opening-cash" type="number" step="any" placeholder="제한성 현금 제외" /></label>
+            <label><b>유지할 최소현금(억원)</b><input id="minimum-cash" type="number" step="any" placeholder="월말 최저잔액" /></label>
+            <label class="wide"><b>월별 상환가능현금(억원)</b><small>영업·필수투자 후, 금융거래 전 현금. 신청기간의 각 월 숫자를 쉼표로 구분. 신규 대출 실행액 제외.</small><textarea id="monthly-cash" rows="2" placeholder="예: 3, 5, 7, 8, ..."></textarea></label>
+            <label class="wide"><b>월별 기존 원리금(억원)</b><small>같은 개월 수. 차입금 만기표·금리표와 대조하세요.</small><textarea id="monthly-existing" rows="2" placeholder="예: 1, 1, 2, 1, ..."></textarea></label>
+            <label class="wide"><b>연도별 상환가능현금(억원)</b><small>시설자금 기간만큼 입력. 향후 필수 CAPEX·세금·운전자본을 반영한 현금.</small><textarea id="annual-cash" rows="2" placeholder="예: 80, 95, 110, 120, 135"></textarea></label>
+            <label class="wide"><b>연도별 기존 원리금(억원)</b><small>동일 연도 수. 신규 여신 원리금은 플랫폼이 별도 계산합니다.</small><textarea id="annual-existing" rows="2" placeholder="예: 25, 30, 28, 20, 18"></textarea></label>
+            <label><b>목표 원리금상환배율</b><input id="target-coverage" type="number" min="0.1" step="0.05" value="1.2" /><small>임시 검토 기준. 실제 은행 정책과 다를 수 있습니다.</small></label>
+          </div><button class="primary-small" id="calculate-structure" type="button">입력자료로 상환구조 계산</button></details>
+          <div id="structure-result" class="structure-result"><p>고객 자료를 입력하면 운전자금의 월별 부족 시점과 시설자금의 연도별 원리금상환배율을 표시합니다.</p></div>
+        </section>
+
+        <section class="panel" id="stress">
+          <div class="section-heading"><div><p class="eyebrow">SIMPLE OPERATING SCENARIO</p><h2>매출·영업이익 민감도</h2><p>공시 연간 매출과 이익률에 두 가정만 적용합니다. 대출한도·원리금 상환능력을 계산하는 기능은 아닙니다.</p></div><button class="secondary-button" type="button" id="run-stress">다시 계산</button></div>
+          <div class="stress-layout">
+            <div class="stress-controls">
+              <label><span>매출 변화 <b id="sales-shock-label">0%</b></span><input id="sales-shock" type="range" min="-30" max="30" value="0" step="1" /><small><em>악화 -30%</em><i>기준 0</i><em>개선 +30%</em></small></label>
+              <label><span>영업이익률 변화 <b id="margin-shock-label">0.0%p</b></span><input id="margin-shock" type="range" min="-20" max="20" value="0" step="0.5" /><small><em>악화 -20%p</em><i>기준 0</i><em>개선 +20%p</em></small><p>영업레버리지로 영업이익이 매출보다 크게 움직일 수 있어 범위를 넓게 설정했습니다.</p></label>
+              <label hidden><span>조달금리 변화 <b id="rate-shock-label">0.00%p</b></span><input id="rate-shock" type="range" min="-5" max="5" value="0" step="0.25" /></label>
+              <label hidden><span>매출채권 회수기간 변화 <b id="delay-label">0일</b></span><input id="collection-delay" type="range" min="-60" max="60" value="0" step="5" /></label>
+              <details class="stress-advanced" hidden><summary>정밀 가정 입력</summary><div class="stress-advanced-fields"><label><input id="existing-variable-share" type="number" /></label><label><input id="credit-sales-share" type="number" /></label></div></details>
+            </div>
+            <div class="stress-result" id="stress-result"><p>분석 후 시나리오를 계산합니다.</p></div>
+          </div>
+        </section>
+        </div>
+
+        <div class="workflow-next"><button type="button" class="primary-small" data-workflow-nav="inspection">현장실사 기록으로 이동 →</button></div>
+        </div>
+
+        <div class="workflow-page" data-workflow-page="inspection" hidden>
+        <section class="panel" id="inspection">
+          <div class="section-heading"><div><p class="eyebrow">FIELD INSPECTION</p><h2>업종별 현장실사 기록</h2><p>항목별로 현장 판단뿐 아니라 관찰 사실, 증빙과 심사에 미치는 영향까지 기록합니다. 상태 선택만으로 확인 완료가 되지 않습니다.</p></div><div class="inspection-actions"><span class="count-badge" id="inspection-progress"></span><button class="secondary-button" id="print-inspection-form" type="button">빈 현장 점검지 인쇄·PDF</button></div></div>
+          <div class="inspection-context" id="inspection-context"></div>
+          <div class="utilization-box" id="utilization-box">
+            <div><p class="eyebrow">SITE INPUT</p><h3>가동률 변화 입력</h3><p>현장 확인값을 분석 결과와 다시 연결합니다.</p></div>
+            <label>이전 가동률<input id="previous-utilization" type="number" min="0" max="100" placeholder="현장 확인값" /><span>%</span></label>
+            <label>현재 가동률<input id="current-utilization" type="number" min="0" max="100" placeholder="현장 확인값" /><span>%</span></label>
+            <div class="utilization-result" id="utilization-result"></div>
+          </div>
+          <div class="inspection-list" id="inspection-list"></div>
+          <label class="inspection-notes"><span>현장실사 종합 메모</span><textarea id="inspection-notes" rows="5" placeholder="관찰한 사실, 담당자 답변, 증빙자료와 추가 확인이 필요한 내용을 구분해 입력하세요."></textarea></label>
+        </section>
+
+        <section class="panel" id="evidence-review">
+          <div class="section-heading"><div><p class="eyebrow">CONCERN → EVIDENCE → REASSESSMENT</p><h2>우려 항목과 증빙 검증</h2><p>파일 첨부만으로 우려가 해소되지는 않습니다. 담당자가 내용을 확인하고 판단 근거를 기록합니다.</p></div><span class="count-badge" id="review-progress">검증 전</span></div>
+          <div id="evidence-review-list" class="evidence-review-list"></div>
+          <div class="evidence-upload"><h3>고객 제출자료 보관</h3><p>먼저 사건을 저장하세요. 첨부파일은 이 PC의 프로젝트 폴더에만 저장되며 자동 판독하지 않습니다. 파일당 10MB 이하.</p><select id="evidence-finding"></select><input id="evidence-file" type="file" accept=".pdf,.docx,.xlsx,.csv,.png,.jpg,.jpeg" /><button class="secondary-button" type="button" id="upload-evidence">증빙 첨부</button><div id="attachment-list"></div></div>
+          <div id="review-outcome" class="review-outcome"></div>
+        </section>
+
+        <div class="workflow-next"><button type="button" class="primary-small" data-workflow-nav="opinion">심사의견으로 이동 →</button></div>
+        </div>
+
+        <div class="workflow-page" data-workflow-page="opinion" hidden>
+        <section class="panel report-panel" id="report">
+          <div class="section-heading"><div><p class="eyebrow">REPORT WORKFLOW</p><h2>심사의견</h2><p>핵심 사실·당기 변화·미확인 사항을 먼저 보여줍니다. 현장실사와 증빙이 추가되면 의견을 다시 확인하세요.</p></div><div class="report-actions"><button class="secondary-button" id="save-report" type="button">리포트 파일 저장</button><button class="primary-small" id="print-report" type="button">PDF 인쇄·저장</button></div></div>
+          <div class="report-tabs" role="tablist">
+            <button data-report="consultation" type="button">1 상담 사전분석</button>
+            <button data-report="inspection" type="button">2 현장실사 점검 리포트</button>
+            <button class="active" data-report="opinion" type="button">심사의견 요약</button>
+            <button data-report="sources" type="button">데이터 출처</button>
+          </div>
+          <article class="report-sheet" id="report-sheet"></article>
+        </section>
+
+        <section class="panel" id="case-history"><div class="section-heading"><div><p class="eyebrow">LOCAL CASE FILE</p><h2>사건 저장·판단 이력</h2><p>현재 분석·현장확인·증빙판단을 새 버전으로 저장합니다. 고객자료는 이 PC에만 보관됩니다.</p></div><button class="primary-small" type="button" id="save-case">현재 사건 저장</button></div><div id="case-status">아직 저장되지 않았습니다.</div><div class="case-history-grid"><div><h3>재검토 순서</h3><p>우려 항목을 확인하고 고객 증빙·현장 관찰을 기록한 뒤 다시 저장하세요. 상단 상담 영역에서 저장된 사건을 언제든 열 수 있습니다.</p></div><div><h3>현재 사건의 변경 이력</h3><div id="case-revisions"></div></div></div></section>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="inspection-print-sheet" hidden aria-hidden="true"></div>
+  <footer><p>CreditLens는 공개자료 기반의 교육·업무 보조 도구입니다. 신용등급, 승인·거절, 담보금액을 자동 확정하지 않습니다.</p></footer>
+  <script src="/app.js" type="module"></script>
+</body>
+</html>
