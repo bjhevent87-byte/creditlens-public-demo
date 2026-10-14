@@ -17,7 +17,7 @@ import { buildLoanStructure } from "./src/services/loan-structure-service.mjs";
 import { buildReviewOutcome } from "./src/services/review-outcome-service.mjs";
 import { CaseRepository } from "./src/services/case-service.mjs";
 import { buildInterimTrend } from "./src/services/interim-service.mjs";
-import { parseManualStatementsCsv } from "./src/services/manual-statement-service.mjs";
+import { inspectManualStatementsCsv } from "./src/services/manual-statement-service.mjs";
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(ROOT, "public");
@@ -123,7 +123,7 @@ async function assembleAnalysis({ company, companyInfo, statementSets, loanReque
     macro: macroRows,
     supplementary,
     sources: [
-      ...allRecords.map((item) => ({ name: item.source, status: "확인", period: item.period, fsDiv: item.fsDiv })),
+      ...allRecords.map((item) => ({ name: item.source, status: manualSource ? "원본 대조 전" : "확인", period: item.period, fsDiv: item.fsDiv })),
       ...(supplementary.audit ? [{ name: supplementary.audit.source, status: "확인", period: supplementary.audit.year || null }] : []),
       ...Object.values(supplementary.interimViews || {}).filter((view) => view.current).map((view) => ({ name: view.current.source, status: "확인", period: view.current.period, fsDiv: view.current.fsDiv })),
       ...macroRows.map((item) => ({ name: item.source || item.name, status: item.status, period: item.latest?.date || null })),
@@ -175,12 +175,24 @@ async function api(req, res, url) {
     const input = await parseJsonBody(req, 250_000);
     const name = String(input.companyName || "").trim().slice(0, 100);
     if (name.length < 2) return sendJson(res, 400, { error: "기업명을 두 글자 이상 입력해 주세요." });
-    let records;
-    try { records = parseManualStatementsCsv(input.csvText, { unit: input.unit }); }
-    catch (error) { return sendJson(res, 400, { error: error.message }); }
-    const company = { name, stockCode: "", corpCode: "CUSTOMER", industry: String(input.industry || "업종 확인 필요").trim().slice(0, 100) };
     const loanRequest = normalizeLoanRequest(input.loanRequest);
-    return sendJson(res, 200, await assembleAnalysis({ company, companyInfo: null, statementSets: { OFS: records }, loanRequest, macroRows: [], mode: "고객제출 CSV · 원본 미검증", requestedYear: Number(records.at(-1).period), latestAvailableYear: Number(records.at(-1).period) }));
+    const fsDiv = input.statementBasis === "CFS" ? "CFS" : input.statementBasis === "OFS" ? "OFS" : null;
+    if (!fsDiv) return sendJson(res, 400, { error: "원본이 별도재무제표인지 연결재무제표인지 선택해 주세요." });
+    let inspected;
+    try { inspected = inspectManualStatementsCsv(input.csvText, { unit: input.unit, fsDiv, loanRequest, overrides: input.overrides }); }
+    catch (error) { return sendJson(res, 400, { error: error.message }); }
+    const records = inspected.records;
+    const company = { name, stockCode: "", corpCode: "CUSTOMER", industry: String(input.industry || "업종 확인 필요").trim().slice(0, 100) };
+    const analysis = await assembleAnalysis({ company, companyInfo: null, statementSets: { [fsDiv]: records }, loanRequest, macroRows: [], mode: "고객제출 CSV · 원본 미검증", requestedYear: Number(records.at(-1).period), latestAvailableYear: Number(records.at(-1).period) });
+    const accountingStandard = ["K-IFRS", "일반기업회계기준", "기타", "확인 전"].includes(input.accountingStandard) ? input.accountingStandard : "확인 전";
+    const auditStatus = ["감사보고서 원문 대조 전", "감사보고서 없음", "감사의견 원문 확인 필요"].includes(input.auditStatus) ? input.auditStatus : "감사보고서 원문 대조 전";
+    const sourceReview = { confirmed: input.sourceReview?.confirmed === true && String(input.sourceReview?.note || "").trim().length >= 5, note: String(input.sourceReview?.note || "").trim().slice(0, 300) };
+    const metadataIssues = [
+      ...(accountingStandard === "확인 전" ? [{ id: "accounting-standard", type: "metadata", severity: "review", title: "적용 회계기준 확인 필요", detail: "원본 표지와 주석에서 적용 회계기준을 확인하세요.", affects: ["계정 정의·비교가능성"], fields: [] }] : []),
+      ...(fsDiv === "CFS" ? [{ id: "borrower-separate", type: "metadata", severity: "blocking", title: "차주 법인 별도재무제표 필요", detail: "연결자료는 그룹 위험을 보여주지만 차주 법인의 직접 상환능력을 대신하지 않습니다.", affects: ["차주 상환능력"], fields: [] }] : []),
+      ...(!sourceReview.confirmed ? [{ id: "source-reconciliation", type: "metadata", severity: "review", title: "제출 원본과 입력 수치 대조 전", detail: "파일명·해시만으로 원본 수치나 감사의견을 검증할 수 없습니다. 담당자가 원문 페이지와 계정명을 대조하고 근거를 기록하세요.", affects: ["모든 자동 해석"], fields: [] }] : []),
+    ];
+    return sendJson(res, 200, { ...analysis, manualReview: { issues: [...inspected.issues, ...metadataIssues], changes: inspected.changes, inputUnit: inspected.inputUnit, statementBasis: fsDiv, accountingStandard, auditStatus, sourceReview, sourceStatus: sourceReview.confirmed ? "담당자 대조 기록 · PDF 자동검증 아님" : "담당자 대조 전 · 수치 계산은 잠정" } });
   }
   if (url.pathname === "/api/analyze" && req.method === "POST") {
     const input = await parseJsonBody(req);
