@@ -117,7 +117,6 @@ function requestPayload(demo = false) {
       facilityRepayment: $("#facility-repayment").value,
       facilityGraceMonths: Number($("#facility-grace").value),
       purpose: $("#purpose").value,
-      visitDate: $("#visit-date").value,
     },
   };
 }
@@ -152,7 +151,6 @@ async function loadConfig() {
 function initializeForm() {
   const currentYear = new Date().getFullYear();
   $("#end-year").innerHTML = [currentYear, currentYear - 1, currentYear - 2, currentYear - 3].map((year, index) => `<option value="${year}" ${index === 0 ? "selected" : ""}>${year}년</option>`).join("");
-  $("#visit-date").value = `${currentYear + 1}-06-29`;
 }
 
 let searchTimer;
@@ -1627,7 +1625,7 @@ $("#download-json").addEventListener("click", () => {
 
 function caseInputValues() {
   return Object.fromEntries([
-    "company-search", "working-amount", "facility-amount", "working-term", "facility-term", "working-rate", "facility-rate", "working-rate-type", "facility-rate-type", "working-repayment", "facility-repayment", "facility-grace", "end-year", "visit-date", "purpose", "opening-cash", "minimum-cash", "monthly-cash", "monthly-existing", "annual-cash", "annual-existing", "target-coverage", "existing-variable-share", "credit-sales-share", "sales-shock", "margin-shock", "rate-shock", "collection-delay", "previous-utilization", "current-utilization", "inspection-notes",
+    "company-search", "working-amount", "facility-amount", "working-term", "facility-term", "working-rate", "facility-rate", "working-rate-type", "facility-rate-type", "working-repayment", "facility-repayment", "facility-grace", "end-year", "purpose", "opening-cash", "minimum-cash", "monthly-cash", "monthly-existing", "annual-cash", "annual-existing", "target-coverage", "existing-variable-share", "credit-sales-share", "sales-shock", "margin-shock", "rate-shock", "collection-delay", "previous-utilization", "current-utilization", "inspection-notes",
   ].map((id) => [id, $("#" + id).value]));
 }
 

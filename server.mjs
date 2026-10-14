@@ -66,7 +66,6 @@ function normalizeLoanRequest(input = {}) {
     facilityRepayment: input.facilityRepayment === "bullet" ? "bullet" : "equal-principal",
     facilityGraceMonths: nonNegative(input.facilityGraceMonths),
     purpose: String(input.purpose || "").slice(0, 500),
-    visitDate: String(input.visitDate || "").slice(0, 10),
   };
 }
 
