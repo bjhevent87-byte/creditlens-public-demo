@@ -47,6 +47,25 @@ $("#manual-template").addEventListener("click", () => {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
 
+$("#manual-sample").addEventListener("click", () => {
+  const columns = ["period", "revenue", "operatingProfit", "netIncome", "costOfSales", "operatingCashFlow", "investingCashFlow", "financingCashFlow", "cash", "totalAssets", "totalLiabilities", "equity", "currentAssets", "currentLiabilities", "accountsReceivable", "inventory", "accountsPayable", "shortTermDebt", "longTermDebt", "financeCosts", "interestExpense", "capex", "intangibleCapex"];
+  const rows = [
+    { period: 2023, revenue: 240, operatingProfit: 22, netIncome: 15, costOfSales: 180, operatingCashFlow: 18, investingCashFlow: -15, financingCashFlow: 4, cash: 45, totalAssets: 420, totalLiabilities: 190, equity: 230, currentAssets: 180, currentLiabilities: 120, accountsReceivable: 55, inventory: 70, accountsPayable: 43, shortTermDebt: 45, longTermDebt: 75, financeCosts: 6, interestExpense: 5, capex: 14, intangibleCapex: 1 },
+    { period: 2024, revenue: 265, operatingProfit: 27, netIncome: 18, costOfSales: 197, operatingCashFlow: 21, investingCashFlow: -20, financingCashFlow: 5, cash: 51, totalAssets: 455, totalLiabilities: 205, equity: 250, currentAssets: 195, currentLiabilities: 130, accountsReceivable: 65, inventory: 77, accountsPayable: 46, shortTermDebt: 50, longTermDebt: 80, financeCosts: 7, interestExpense: 6, capex: 18, intangibleCapex: 2 },
+    { period: 2025, revenue: 290, operatingProfit: 20, netIncome: 11, costOfSales: 223, operatingCashFlow: 8, investingCashFlow: -25, financingCashFlow: 14, cash: 48, totalAssets: 490, totalLiabilities: 230, equity: 260, currentAssets: 205, currentLiabilities: 145, accountsReceivable: 80, inventory: 92, accountsPayable: 49, shortTermDebt: 65, longTermDebt: 85, financeCosts: 9, interestExpense: 8, capex: 23, intangibleCapex: 2 },
+  ];
+  const csv = `${columns.join(",")}\r\n${rows.map((row) => columns.map((column) => row[column] ?? "").join(",")).join("\r\n")}\r\n`;
+  const transfer = new DataTransfer();
+  transfer.items.add(new File([csv], "가상기업_재무예시.csv", { type: "text/csv" }));
+  $("#manual-csv").files = transfer.files;
+  $("#manual-name").value = "가상기업 에이비정밀";
+  $("#manual-industry").value = "자동차부품 제조업 · 가상 사례";
+  $("#manual-unit").value = "억원";
+  $("#manual-working").value = "10";
+  $("#manual-facility").value = "30";
+  $("#manual-status").textContent = "가상 재무자료 3개년을 채웠습니다. ‘제출 재무자료 분석’을 누르면 계산 결과를 볼 수 있습니다.";
+});
+
 function renderResult(analysis) {
   const records = Array.isArray(analysis.records) ? analysis.records : [];
   const latest = records.at(-1) || {}, previous = records.at(-2) || {};
@@ -87,6 +106,7 @@ $("#manual-form").addEventListener("submit", async (event) => {
 });
 
 fetch("/api/health").then((response) => response.json()).then((health) => {
-  if (health.publicDemo) $("#manual-public-lock").hidden = false;
-  else $("#manual-workspace").hidden = false;
-}).catch(() => { $("#manual-status").textContent = "서버 상태를 확인하지 못했습니다. 로컬판 연결을 확인해 주세요."; });
+  $("#manual-transfer-note").textContent = health.publicDemo
+    ? "공개 체험판: 기업명·CSV 수치·신청액은 분석 요청 시 Vercel 서버로 전송되지만 CreditLens 사건·파일 저장소에는 보관되지 않습니다. PDF는 브라우저 탭에만 남습니다. 포트폴리오 체험에는 가상기업 예시를 권장합니다."
+    : "로컬판: 기업명·CSV 수치·신청액은 이 PC의 분석 서버에서 처리하며 사건·파일 저장소에는 보관되지 않습니다. PDF는 브라우저 탭에만 남습니다.";
+}).catch(() => { $("#manual-status").textContent = "서버 상태를 확인하지 못했습니다. 분석 버튼을 누르기 전에 연결을 확인해 주세요."; });

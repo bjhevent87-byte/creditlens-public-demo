@@ -24,6 +24,8 @@
 #manual-status { min-height: 1.6em; color: #526984; font-size: 15px; }
 .manual-guide ol { padding-left: 22px; }.manual-guide li { padding: 13px 0; border-bottom: 1px solid #e8eef5; }.manual-guide li b { color: #1b3656; font-size: 17px; }.manual-guide li p { margin: 5px 0 0; }.manual-guide a, .manual-lock a { color: #1765d1; font-weight: 800; }
 .manual-lock { margin-top: 18px; border-color: #f0d9a8; background: #fff9ee; }.manual-lock p { max-width: 780px; }
+.manual-transfer-note { margin-top: 18px; padding: 14px 18px; border: 1px solid #dbe7f3; border-radius: 13px; color: #405b76; background: #fafdff; font-size: 15px; line-height: 1.6; }
+.manual-file-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .manual-results { margin-top: 18px; }.manual-result-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 15px; align-items: start; }.manual-result-head p { color: #5c6e82; font-size: 15px; }
 .manual-badge { display: inline-flex; padding: 7px 10px; border-radius: 99px; color: #915a12; background: #fff1db; font-size: 13px; font-weight: 800; }
 .manual-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 11px; margin: 21px 0; }.manual-kpis article { padding: 17px; border: 1px solid #dfe8f1; border-radius: 12px; background: #f9fbfe; }.manual-kpis span { color: #5e7184; font-size: 14px; }.manual-kpis strong { display: block; margin: 5px 0; color: #182d4b; font-size: 23px; }.manual-kpis small { color: #61748a; font-size: 13px; }

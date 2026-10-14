@@ -154,7 +154,6 @@ async function api(req, res, url) {
   if (req.method === "POST" && req.headers.origin && new URL(req.headers.origin).host !== req.headers.host) return sendJson(res, 403, { error: "동일한 웹페이지에서만 입력할 수 있습니다." });
   if (url.pathname === "/api/health") return sendJson(res, 200, { ok: true, port: PORT, publicDemo: PUBLIC_DEMO, dart: dart.configured, ecos: macro.configured, kosis: kosis.configured, basisDate: kstDate() });
   if (PUBLIC_DEMO && url.pathname.startsWith("/api/cases")) return sendJson(res, 403, { error: "공개 데모에서는 사건·증빙 저장이 비활성화됩니다. 로컬판에서 사용해 주세요." });
-  if (PUBLIC_DEMO && url.pathname === "/api/manual-analysis") return sendJson(res, 403, { error: "공개 데모에서는 고객 제출 재무자료를 받지 않습니다. 로컬판에서 사용해 주세요." });
   if (url.pathname === "/api/config") return sendJson(res, 200, {
     services: [
       { id: "dart", name: "OpenDART", configured: dart.configured, role: "기업개요·3개년 재무" },

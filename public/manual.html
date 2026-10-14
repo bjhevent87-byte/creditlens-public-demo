@@ -16,12 +16,12 @@
   </header>
   <main class="manual-shell">
     <div class="manual-intro"><p class="eyebrow">PRIVATE COMPANY / LOCAL FIRST</p><h1>비상장기업도 같은 기준으로,<br><em>자료 출처는 더 엄격하게.</em></h1><p>공시 수치가 없는 기업은 고객이 제출한 연간 재무 CSV로 먼저 계산합니다. 사업보고서·감사보고서 PDF는 원본 대조자료로 연결하며, 수치를 자동으로 읽었다고 표시하지 않습니다.</p><div class="manual-scope"><span>① 고객 제출 CSV</span><span>② 재무 검증·추세</span><span>③ 원본 대조 과제</span></div></div>
-    <div id="manual-public-lock" class="manual-lock" hidden><h2>공개 데모에서는 고객자료를 받지 않습니다</h2><p>로그인·접근통제가 없는 공개 사이트에 실제 기업 재무자료를 전송하지 않기 위한 조치입니다. 이 화면은 기능 구조를 보여주며, CSV 분석은 PC에서 실행하는 로컬판에서 사용해 주세요.</p><a href="/">공시자료 기반 분석으로 돌아가기 →</a></div>
-    <section class="manual-grid" id="manual-workspace" hidden>
+    <div class="manual-transfer-note" id="manual-transfer-note" role="note">분석 중에는 기업명·CSV 수치·신청액이 이 사이트의 분석 API로 전달됩니다. CreditLens 사건·파일 저장소에는 보관하지 않습니다. PDF는 브라우저 탭 안에서만 선택되며 서버에 전송되지 않습니다.</div>
+    <section class="manual-grid" id="manual-workspace">
       <form class="manual-card" id="manual-form">
         <div class="manual-card-heading"><span>01 / 입력</span><h2>고객 제출 재무자료</h2><p>금액은 선택한 단위로 입력하고, 빈칸을 0으로 바꾸지 않습니다.</p></div>
         <div class="manual-fields"><label>기업명<input id="manual-name" required minlength="2" maxlength="100" placeholder="예: ○○정밀 주식회사" /></label><label>업종·주요 사업<input id="manual-industry" maxlength="100" placeholder="예: 자동차 부품 제조업" /></label><label>운전자금 요청액 (억원)<input id="manual-working" type="number" min="0" value="0" /></label><label>시설자금 요청액 (억원)<input id="manual-facility" type="number" min="0" value="0" /></label><label>CSV 금액 단위<select id="manual-unit"><option>억원</option><option>백만원</option><option>천원</option><option>원</option></select></label></div>
-        <div class="manual-file"><div><b>연간 재무 CSV · 2~4개년</b><small>기간별 별도재무제표. 필수 열: 연도·매출·영업이익·영업현금흐름·자산·부채·자본.</small></div><input id="manual-csv" type="file" accept=".csv,text/csv" required /><button class="secondary-button" id="manual-template" type="button">CSV 양식 내려받기</button></div>
+        <div class="manual-file"><div><b>연간 재무 CSV · 2~4개년</b><small>기간별 별도재무제표. 필수 열: 연도·매출·영업이익·영업현금흐름·자산·부채·자본.</small></div><input id="manual-csv" type="file" accept=".csv,text/csv" required /><div class="manual-file-actions"><button class="secondary-button" id="manual-template" type="button">CSV 양식 내려받기</button><button class="secondary-button" id="manual-sample" type="button">가상기업 예시 채우기</button></div></div>
         <div class="manual-file"><div><b>사업·감사보고서 PDF · 선택</b><small>이 브라우저 탭에서 파일명·SHA256을 대조용으로 표시합니다. PDF의 수치는 아직 자동 추출하지 않습니다.</small></div><input id="manual-pdf" type="file" accept=".pdf,application/pdf" multiple /><div id="manual-pdf-list" class="manual-file-list">첨부 원본 없음</div></div>
         <p class="manual-warning">원본 파일의 진위, 감사의견, 주석상 담보·보증·차입만기는 담당자가 확인해야 합니다. 자동 승인·한도 산정에 사용하지 마세요.</p>
         <button class="primary-button" type="submit">제출 재무자료 분석 <b>→</b></button><p id="manual-status" role="status">CSV 양식을 내려받아 재무제표 값을 입력해 주세요.</p>
