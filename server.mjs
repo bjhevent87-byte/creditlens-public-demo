@@ -199,8 +199,8 @@ async function api(req, res, url) {
       cfsInterim ? dart.statement(corpCode, Number(cfsInterim.period) - 1, "CFS", cfsInterim.reportCode).catch(() => null) : null,
     ]);
     const interimViews = {
-      ...(ofsInterim ? { OFS: { current: ofsInterim, trend: buildInterimTrend(ofsInterim, priorOfsInterim) } } : {}),
-      ...(cfsInterim ? { CFS: { current: cfsInterim, trend: buildInterimTrend(cfsInterim, priorCfsInterim) } } : {}),
+      ...(ofsInterim ? { OFS: { current: ofsInterim, prior: priorOfsInterim ? { period: priorOfsInterim.period, reportType: priorOfsInterim.reportType, source: priorOfsInterim.source, rceptNo: priorOfsInterim.rceptNo } : null, trend: buildInterimTrend(ofsInterim, priorOfsInterim) } } : {}),
+      ...(cfsInterim ? { CFS: { current: cfsInterim, prior: priorCfsInterim ? { period: priorCfsInterim.period, reportType: priorCfsInterim.reportType, source: priorCfsInterim.source, rceptNo: priorCfsInterim.rceptNo } : null, trend: buildInterimTrend(cfsInterim, priorCfsInterim) } } : {}),
     };
     const enrichedCompany = { ...company, industry: companyResult.induty_code ? `산업코드 ${companyResult.induty_code}` : "업종 확인 필요" };
     return sendJson(res, 200, await assembleAnalysis({ company: enrichedCompany, companyInfo: companyResult, statementSets, loanRequest, macroRows, mode: "공식 API", errors: [...(ofsResult.errors || []), ...(cfsResult.errors || [])], requestedYear: primaryResult.requestedYear, latestAvailableYear: primaryResult.latestAvailableYear, yearFallback: primaryResult.yearFallback, supplementary: { interim: ofsInterim, interimTrend: interimViews.OFS?.trend || null, interimViews, audit: auditResult } }));

@@ -273,7 +273,9 @@ function renderAnalysis() {
     ? `연간 ${quality.annualPeriods.join(" / ")} · 최신 중간 ${interimForBasis?.period || "자료없음"} · 연간과 분리`
     : `${state.statementScope === "OFS" ? "별도(차주 법인)" : "연결(그룹)"} · ${analysis.records.map((row) => row.period).join(" / ")} · 원`;
   renderSummary();
+  renderDecisionHome();
   renderRecentDisclosure();
+  renderEvidenceTrace();
   renderCharts();
   renderFinancialTable();
   renderInterimFinancialTable(selectedInterim);
@@ -432,6 +434,117 @@ function latestInterimView(analysis) {
   const raw = analysis?.supplementary?.interim;
   return raw && raw.fsDiv === state.statementScope ? { ...raw, period: `${raw.period} ${raw.reportType}`, revenueGrowth: null, operatingProfitGrowth: null, operatingCashFlowGrowth: null, warning: "전년 동기 비교자료가 없어 중간재무 절대금액만 표시합니다." } : null;
 }
+
+function currentComparison() {
+  const analysis = state.analysis;
+  const annual = analysis.records.at(-1);
+  const interim = latestInterimView(analysis);
+  const requestedYear = Number(analysis.dataQuality?.requestedYear);
+  const useInterim = interim && Number(String(interim.period).slice(0, 4)) === requestedYear && requestedYear > Number(annual?.period);
+  if (useInterim) return {
+    current: interim, previous: {
+      revenue: interim.previousRevenue, operatingProfit: interim.previousOperatingProfit,
+      operatingCashFlow: interim.previousOperatingCashFlow, debtRatio: interimDebtRatio(interim, true),
+    },
+    period: interim.period, previousPeriod: interim.comparisonPeriod || "전년 동기",
+    scope: interim.fsDiv === "OFS" ? "별도 · 차주 법인" : "연결 · 그룹 위험",
+    debtRatio: interimDebtRatio(interim), previousDebtRatio: interimDebtRatio(interim, true),
+    filing: "중간보고서", interim: true,
+  };
+  const previous = analysis.records.at(-2);
+  return {
+    current: annual, previous, period: `${annual?.period || "자료없음"} 사업보고서`,
+    previousPeriod: previous ? `${previous.period} 사업보고서` : "비교자료 없음",
+    scope: state.statementScope === "OFS" ? "별도 · 차주 법인" : "연결 · 그룹 위험",
+    debtRatio: annual?.debtRatio, previousDebtRatio: previous?.debtRatio,
+    filing: "사업보고서", interim: false,
+  };
+}
+
+function ratioChange(current, previous, lowerIsBetter = false) {
+  if (!hasNumber(current) || !hasNumber(previous)) return { text: "비교자료 없음", tone: "neutral" };
+  const change = Number(current) - Number(previous);
+  return { text: changeText(change, "%p"), tone: change === 0 ? "neutral" : ((lowerIsBetter ? change < 0 : change > 0) ? "positive" : "negative") };
+}
+
+function amountChange(current, previous) {
+  if (!hasNumber(current) || !hasNumber(previous) || Number(previous) <= 0) return { text: "금액 비교 필요", tone: "neutral" };
+  const change = (Number(current) / Number(previous) - 1) * 100;
+  return { text: changeText(change), tone: change === 0 ? "neutral" : change > 0 ? "positive" : "negative" };
+}
+
+function decisionNarrative(view) {
+  const { current, previous } = view;
+  if (!current) return "공시 수치를 확인한 뒤 상환재원을 검토합니다.";
+  if (hasNumber(current.revenue) && hasNumber(previous?.revenue) && hasNumber(current.operatingCashFlow) && hasNumber(previous?.operatingCashFlow)
+      && current.revenue > previous.revenue && current.operatingCashFlow < previous.operatingCashFlow)
+    return "매출은 늘었지만 영업현금은 줄었습니다. 판매대금 회수와 재고 변화를 먼저 확인하세요.";
+  if (hasNumber(current.operatingCashFlow) && current.operatingCashFlow < 0)
+    return "영업활동에서 현금이 유출됐습니다. 원리금 상환재원이 어디서 나오는지 확인하세요.";
+  if (hasNumber(view.debtRatio) && hasNumber(view.previousDebtRatio) && view.debtRatio > view.previousDebtRatio + 5)
+    return "부채비율이 상승했습니다. 기존 차입 만기와 신규 여신의 현금부담을 함께 확인하세요.";
+  return "공시상 실적 방향과 현금창출을 확인했습니다. 요청 자금별 상환재원은 별도로 검증해야 합니다.";
+}
+
+function renderDecisionHome() {
+  const view = currentComparison();
+  const a = state.analysis;
+  const { current, previous } = view;
+  const revenueChange = amountChange(current?.revenue, previous?.revenue);
+  const cashChange = amountChange(current?.operatingCashFlow, previous?.operatingCashFlow);
+  const debtChange = ratioChange(view.debtRatio, view.previousDebtRatio, true);
+  const cashDecline = hasNumber(current?.operatingCashFlow) && hasNumber(previous?.operatingCashFlow) && current.operatingCashFlow < previous.operatingCashFlow;
+  const priorities = [];
+  if (cashDecline || (hasNumber(current?.operatingCashFlow) && current.operatingCashFlow < 0)) priorities.push(["현금 회수·유출 원인", "매출채권 Aging·재고 및 현금흐름 조정표"]);
+  if (hasNumber(view.debtRatio) && hasNumber(view.previousDebtRatio) && view.debtRatio > view.previousDebtRatio) priorities.push(["차입 상환 일정", "기존 차입 만기표와 신규여신 납부월 대조"]);
+  if (Number(a.loanRequest.facilityAmount) > 0) priorities.push(["시설투자 수요", "수주·가동률·자기자금 및 설비 계약 확인"]);
+  if (Number(a.loanRequest.workingAmount) > 0) priorities.push(["운전자금 회수", "월별 매입·판매·입금 일정 확인"]);
+  if (!priorities.length) priorities.push(["원자료 대조", "공시 주석과 최신 고객자료 확인"]);
+  const topPriorities = priorities.slice(0, 3);
+  const reportNo = view.interim ? current?.rceptNo : current?.rceptNo;
+  const reportLink = reportNo ? `<a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${encodeURIComponent(reportNo)}" target="_blank" rel="noopener noreferrer">${escapeHtml(view.period)} 원문 ↗</a>` : `<span>${escapeHtml(view.period)} · 원문 번호 확인 필요</span>`;
+  const metric = (label, value, delta) => `<div class="decision-metric"><span>${label}</span><strong>${escapeHtml(value)}</strong><small class="tone-${delta.tone}">${escapeHtml(delta.text)} <em>전년 ${view.interim ? "동기" : "대비"}</em></small></div>`;
+  const working = Number(a.loanRequest.workingAmount) || 0;
+  const facility = Number(a.loanRequest.facilityAmount) || 0;
+  $("#decision-home").innerHTML = `
+    <article class="decision-lead"><div class="decision-lead-top"><span class="decision-badge">공개자료 기반 · 추가 확인</span>${reportLink}</div>
+      <h3>${escapeHtml(decisionNarrative(view))}</h3><p class="decision-period">${escapeHtml(view.previousPeriod)} → ${escapeHtml(view.period)} · ${escapeHtml(view.scope)}. 확인 전 승인·거절을 자동 판단하지 않습니다.</p>
+      <div class="decision-metrics">${metric("매출액", formatMoney(current?.revenue), revenueChange)}${metric("영업현금", formatMoney(current?.operatingCashFlow), cashChange)}${metric("부채비율", formatNumber(view.debtRatio, 1, "%"), debtChange)}</div>
+    </article>
+    <aside class="decision-actions"><div class="decision-section-title"><h3>담당자 확인 ${topPriorities.length}가지</h3><span>우선순위</span></div><ol>${topPriorities.map(([title, detail]) => `<li><b>${escapeHtml(title)}</b><span>${escapeHtml(detail)}</span></li>`).join("")}</ol><p>관찰 사실과 증빙을 남기면 심사의견에서 다시 검토합니다.</p></aside>
+    <article class="decision-secondary"><div class="decision-section-title"><h3>같은 기간 현금 비교</h3><span>${view.interim ? "누적 · 억원" : "연간 · 억원"}</span></div><div class="decision-compare"><div><small>${escapeHtml(view.previousPeriod)}</small><strong>${formatMoney(previous?.operatingCashFlow)}</strong></div><span aria-hidden="true">→</span><div><small>${escapeHtml(view.period)}</small><strong class="${cashDecline ? "tone-negative" : ""}">${formatMoney(current?.operatingCashFlow)}</strong></div></div><p>영업현금의 증감만으로 원인을 확정하지 않습니다. 투자·재무 현금흐름은 아래 상세에서 함께 봅니다.</p></article>
+    <article class="decision-secondary"><div class="decision-section-title"><h3>요청여신</h3><span>총 ${(working + facility).toLocaleString("ko-KR")}억원</span></div>${working ? `<div class="decision-loan-line"><span>운전자금 · ${a.loanRequest.workingTermMonths}개월</span><b>${working.toLocaleString("ko-KR")}억원</b></div>` : ""}${facility ? `<div class="decision-loan-line"><span>시설자금 · ${a.loanRequest.facilityTermMonths}개월</span><b>${facility.toLocaleString("ko-KR")}억원</b></div>` : ""}<button type="button" class="decision-link" data-open-detail="credit">용도별 검토 보기 →</button></article>`;
+}
+
+function renderEvidenceTrace() {
+  const view = currentComparison();
+  const { current, previous } = view;
+  const a = state.analysis;
+  const annual = a.records.at(-1);
+  const sourceItem = (label, row) => `<div class="trace-document"><b>${escapeHtml(label)}</b><span>${escapeHtml(row?.source || "공시 출처 확인 필요")}</span>${row?.rceptNo ? `<a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${encodeURIComponent(row.rceptNo)}" target="_blank" rel="noopener noreferrer">DART 원문 열기 ↗</a>` : `<small>접수번호 없음 · 공시 원문 직접 대조</small>`}</div>`;
+  const cashChange = amountChange(current?.operatingCashFlow, previous?.operatingCashFlow);
+  const warnings = a.assessment?.redFlags || [];
+  const check = warnings.flatMap((flag) => flag.checks || []).slice(0, 2);
+  if (!check.length) check.push("현금흐름 조정항목", "차입금·담보 주석");
+  $("#evidence-trace").innerHTML = `<div class="trace-heading"><div><p class="eyebrow">SOURCE → CALCULATION → REVIEW</p><h2>원문·숫자·판단을 나란히</h2></div><p>같은 재무제표 범위와 기간을 대조합니다. 원인 가설은 증빙 전 확정하지 않습니다.</p></div><div class="trace-grid">
+    <article class="trace-panel"><h3><span>01</span> 공시 원문</h3>${sourceItem(view.period, current)}${view.interim ? sourceItem(view.previousPeriod, a.supplementary?.interimViews?.[state.statementScope]?.prior || {}) : sourceItem(view.previousPeriod, previous)}${view.interim && annual ? `<p class="trace-note">${escapeHtml(annual.period)} 연간 수치와 중간 누적 실적은 합산하지 않습니다.</p>` : ""}</article>
+    <article class="trace-panel"><h3><span>02</span> 추출·계산 수치</h3><div class="trace-number"><small>${escapeHtml(view.period)} 영업현금흐름</small><strong>${formatMoney(current?.operatingCashFlow)}</strong><em class="tone-${cashChange.tone}">${escapeHtml(cashChange.text)}</em></div><dl><div><dt>전기 같은 기간</dt><dd>${formatMoney(previous?.operatingCashFlow)}</dd></div><div><dt>매출액</dt><dd>${formatMoney(current?.revenue)}</dd></div><div><dt>부채비율</dt><dd>${formatNumber(view.debtRatio, 1, "%")}</dd></div></dl><p class="trace-note">증감률은 전기 영업현금이 양수일 때 (당기 ÷ 전기 − 1) × 100으로 계산합니다. 음수라면 금액과 전환 방향을 확인하세요.</p></article>
+    <article class="trace-panel"><h3><span>03</span> 판단·추가 증빙</h3><div class="trace-judgment">${escapeHtml(decisionNarrative(view))}</div><p class="trace-note">이 문장은 공시 수치의 방향을 설명합니다. 차주의 상환능력이나 위험 원인을 확정하지 않습니다.</p><h4>다음 확인자료</h4><ul>${check.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul><button type="button" class="decision-link" data-open-detail="risks">위험 수치 자세히 보기 →</button></article>
+  </div>`;
+}
+
+$("#decision-home").addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-open-detail]");
+  if (!button) return;
+  setAnalysisDetailView(button.dataset.openDetail);
+  $("#analysis-detail-tabs").scrollIntoView({ behavior: "smooth", block: "start" });
+});
+$("#evidence-trace").addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-open-detail]");
+  if (!button) return;
+  setAnalysisDetailView(button.dataset.openDetail);
+  $("#analysis-detail-tabs").scrollIntoView({ behavior: "smooth", block: "start" });
+});
 
 function interimDebtRatio(view, previous = false) {
   if (!view) return null;
@@ -1016,6 +1129,7 @@ function renderLoans() {
   const latest = a.records.at(-1);
   const working = Number(a.loanRequest.workingAmount) > 0;
   const facility = Number(a.loanRequest.facilityAmount) > 0;
+  renderLoanOverview();
   const tabs = [
     working && ["working", "운전자금 검토"],
     facility && ["facility", "시설자금 검토"],
@@ -1037,6 +1151,26 @@ function renderLoans() {
   }
   $("#decision-disclaimer").textContent = support.disclaimer;
 }
+
+function renderLoanOverview() {
+  const a = state.analysis;
+  const view = currentComparison();
+  const { current, previous } = view;
+  const requestedWorking = Number(a.loanRequest.workingAmount) || 0;
+  const requestedFacility = Number(a.loanRequest.facilityAmount) || 0;
+  const fact = (label, value, change) => `<div class="loan-glance-fact"><span>${label}</span><strong>${escapeHtml(value)}</strong><small class="tone-${change.tone}">${escapeHtml(change.text)} · 전년 ${view.interim ? "동기" : "대비"}</small></div>`;
+  const workingCard = requestedWorking ? `<article class="loan-glance-card"><div class="loan-glance-head"><div><span class="loan-term">단기 · ${a.loanRequest.workingTermMonths}개월</span><h3>운전자금</h3></div><strong>${requestedWorking.toLocaleString("ko-KR")}억원</strong></div><div class="loan-glance-facts">${fact("매출액", formatMoney(current?.revenue), amountChange(current?.revenue, previous?.revenue))}${fact("영업현금", formatMoney(current?.operatingCashFlow), amountChange(current?.operatingCashFlow, previous?.operatingCashFlow))}</div><p class="loan-glance-judgment"><b>우선 확인</b> · 매입부터 입금까지의 실제 회전기간이 신청 만기와 맞는지 확인해야 합니다.</p><p><b>받을 자료</b> · 월별 매입·판매·회수 계획, 매출채권 Aging</p><button type="button" data-loan-glance="working">운전자금 계산·규칙 보기 →</button></article>` : "";
+  const facilityCard = requestedFacility ? `<article class="loan-glance-card"><div class="loan-glance-head"><div><span class="loan-term">장기 · ${a.loanRequest.facilityTermMonths}개월</span><h3>시설자금</h3></div><strong>${requestedFacility.toLocaleString("ko-KR")}억원</strong></div><div class="loan-glance-facts">${fact("영업이익", formatMoney(current?.operatingProfit), amountChange(current?.operatingProfit, previous?.operatingProfit))}${fact("부채비율", formatNumber(view.debtRatio, 1, "%"), ratioChange(view.debtRatio, view.previousDebtRatio, true))}</div><p class="loan-glance-judgment"><b>우선 확인</b> · 신규 설비가 장기 원리금 상환재원을 만드는지 확인 전입니다.</p><p><b>받을 자료</b> · 설비 계약·견적, 자기자금, 수주·가동률 계획</p><button type="button" data-loan-glance="facility">시설자금 계산·규칙 보기 →</button></article>` : "";
+  $("#loan-overview").innerHTML = `<p class="loan-overview-period">${escapeHtml(view.period)} · ${escapeHtml(view.scope)} · ${view.interim ? "전년 동기" : "전년"} 비교. 공개자료의 관찰값이며 대출 승인·적정 금액 판단은 아닙니다.</p><div class="loan-glance-grid">${workingCard}${facilityCard}</div>${requestedWorking && requestedFacility ? `<div class="loan-combined"><strong>두 자금을 함께 보면</strong><span>운전자금 회수월과 시설자금 원리금 납부월이 겹치는지 확인</span><span>기존 차입 만기표를 받아 월별 현금부담 대조</span></div>` : ""}`;
+}
+
+$("#loan-overview").addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-loan-glance]");
+  if (!button) return;
+  state.loanView = button.dataset.loanGlance;
+  renderLoans();
+  $("#loan-tabs").scrollIntoView({ behavior: "smooth", block: "start" });
+});
 
 $("#loan-tabs").addEventListener("click", (event) => {
   const button = event.target.closest("button[data-loan-view]");
