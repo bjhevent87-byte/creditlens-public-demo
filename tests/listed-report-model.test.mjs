@@ -37,11 +37,39 @@ test("상장 전체 보고서는 화면에서 연결을 보더라도 차주 별�
   assert.match(model.basisLabel, /별도재무제표/);
   assert.equal(model.records.at(-1).revenue, 11_000_000_000);
   assert.equal(model.focusInterim, true);
-  assert.match(model.sections.summary.bullets[0], /2026년의 연간 사업보고서는 아직 없어/);
+  const summary = model.sections.summary.bullets.map((item) => typeof item === "string" ? item : `${item.text} ${item.detail}`).join(" ");
+  assert.match(summary, /2026년.*2025년.*연간자료/);
+  assert.match(summary, /2026 반기보고서.*첫 요약/);
+  assert.match(summary, /2025년.*매출.*영업이익.*영업활동현금흐름/);
+  assert.match(summary, /2026 반기보고서.*매출.*영업이익.*영업활동현금흐름/);
+  assert.match(summary, /2025 반기보고서.*비교/);
+  assert.doesNotMatch(summary, /원인 확정이 아니라 검증 대상입니다|미확인 항목은 최종 의견에서 제외하지 않습니다/);
   const html = renderFullReport(model);
   assert.match(html, /최근 중간 누적 매출/);
   assert.match(html, /2025 반기보고서 → 2026 반기보고서/);
   assert.ok(html.indexOf("현장실사 기록과 우려 재판단") < html.indexOf("종합 심사의견"));
+});
+
+test("상장 보고서의 산업·경영진 보완 의견은 내용과 출처가 함께 있을 때만 반영한다", () => {
+  const baseline = buildListedReportModel(listedAnalysis());
+  const incomplete = buildListedReportModel(listedAnalysis(), {
+    reportEdits: { industry: { text: "출처 없이 입력한 판단", source: "" } },
+  });
+  assert.equal(incomplete.sections.industry.text, baseline.sections.industry.text);
+
+  const edited = buildListedReportModel(listedAnalysis(), {
+    reportEdits: {
+      industry: { text: '완성차 납품 감소 <img src=x onerror=alert(1)>', source: "고객 면담록 4쪽" },
+      management: { text: "경영진이 재가동 계획을 제시", source: "현장실사 기록 2쪽" },
+    },
+  });
+  const html = renderFullReport(edited);
+  assert.match(html, /완성차 납품 감소/);
+  assert.match(html, /고객 면담록 4쪽/);
+  assert.match(html, /경영진이 재가동 계획을 제시/);
+  assert.match(html, /현장실사 기록 2쪽/);
+  assert.doesNotMatch(html, /<img src=x/);
+  assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/);
 });
 
 test("현장 우려 또는 근거 미완료는 긍정적 심사 준비 상태를 최종보고서에 그대로 싣지 않는다", () => {

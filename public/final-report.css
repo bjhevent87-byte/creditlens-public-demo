@@ -58,7 +58,11 @@
 .credit-full-report .cr-section-heading > span { display: inline-grid; width: 36px; height: 36px; flex: none; place-items: center; border-radius: 10px; color: var(--cr-lime); background: var(--cr-forest); font-size: 13px; font-weight: 850; }
 .credit-full-report .cr-section-heading h2 { margin: 0; color: var(--cr-ink); font-size: 25px; font-weight: 760; line-height: 1.25; }
 .credit-full-report .cr-lead { font-size: 16px; font-weight: 600; }
+.credit-full-report .cr-lead-points { display: grid; gap: 5px; margin-bottom: 18px; }
+.credit-full-report .cr-lead-points p { margin: 0; color: var(--cr-ink); line-height: 1.45; }
+.credit-full-report .cr-lead-points .cr-lead { color: var(--cr-forest); font-weight: 750; }
 .credit-full-report .cr-narrative { white-space: pre-line; }
+.credit-full-report .cr-source-note { display: inline-block; margin: 0 0 12px; padding: 5px 10px; border-radius: 6px; color: #36584c; background: #edf5ee; font-size: 13px; font-weight: 650; }
 .credit-full-report .cr-subtitle { margin: -3px 0 12px; color: var(--cr-muted); font-size: 13px; }
 .credit-full-report .cr-empty { margin: 0 0 14px; padding: 13px 15px; border-left: 4px solid #9aaea2; border-radius: 0 8px 8px 0; color: #41594f; background: var(--cr-soft); }
 .credit-full-report .cr-caption { margin: 9px 0 18px; color: var(--cr-muted); font-size: 12px; line-height: 1.6; }
@@ -69,6 +73,7 @@
 .credit-full-report .cr-narrative-list h3 { font-size: 15px; }
 .credit-full-report .cr-narrative-list ul, .credit-full-report .cr-limit-list { padding-left: 22px; }
 .credit-full-report .cr-narrative-list li, .credit-full-report .cr-limit-list li { padding-left: 3px; }
+.credit-full-report .cr-narrative-list li small { display: block; margin-top: 3px; color: var(--cr-muted); font-size: 13px; }
 
 .credit-full-report .cr-stat-grid, .credit-full-report .cr-inspection-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 17px 0; }
 .credit-full-report .cr-stat, .credit-full-report .cr-inspection-summary > div { padding: 15px 17px; border: 1px solid var(--cr-line); border-radius: 10px; background: var(--cr-soft); }
@@ -117,8 +122,10 @@
 .credit-full-report .cr-definition-table td strong { display: block; margin-top: 5px; color: var(--cr-forest); }
 
 .credit-full-report .cr-loan-grid, .credit-full-report .cr-opinion-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 16px 0; }
-.credit-full-report .cr-loan-card { padding: 17px; border: 1px solid var(--cr-line); border-radius: 10px; background: #fbfcfb; }
-.credit-full-report .cr-loan-card-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 14px; }
+.credit-full-report .cr-loan-card { min-width: 0; padding: 17px; border: 1px solid var(--cr-line); border-radius: 10px; background: #fbfcfb; }
+.credit-full-report .cr-loan-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 14px; }
+.credit-full-report .cr-loan-card-head > div { min-width: 0; }
+.credit-full-report .cr-loan-card-head .cr-tag { flex: 0 1 auto; max-width: 58%; min-width: 0; white-space: normal; overflow-wrap: anywhere; text-align: right; }
 .credit-full-report .cr-loan-card-head span:first-child { display: block; color: var(--cr-muted); font-size: 12px; }
 .credit-full-report .cr-loan-card-head strong { display: block; color: var(--cr-forest); font-size: 24px; }
 .credit-full-report .cr-loan-card p { margin: 8px 0; font-size: 13px; }
@@ -188,11 +195,12 @@
   .credit-full-report .cr-toc + .cr-section { break-before: page; page-break-before: always; }
   .credit-full-report .cr-section { padding: 8mm 0 5mm; break-inside: auto; }
   .credit-full-report .cr-section-heading { break-after: avoid-page; }
-  .credit-full-report #cr-section-11 { break-before: page; page-break-before: always; }
+  .credit-full-report #cr-section-09 { break-before: page; page-break-before: always; }
   .credit-full-report .cr-section-heading > span { color: #123f36; border: 1px solid #123f36; background: #fff; }
   .credit-full-report .cr-section-heading h2 { font-size: 17pt; }
   .credit-full-report h3, .credit-full-report h4 { break-after: avoid-page; }
-  .credit-full-report .cr-stat, .credit-full-report .cr-indicator, .credit-full-report .cr-ratio, .credit-full-report .cr-finding, .credit-full-report .cr-scenario, .credit-full-report .cr-loan-card, .credit-full-report .cr-inspection-item, .credit-full-report .cr-empty, .credit-full-report .cr-note { break-inside: avoid-page; }
+  .credit-full-report .cr-stat, .credit-full-report .cr-indicator, .credit-full-report .cr-ratio, .credit-full-report .cr-finding, .credit-full-report .cr-scenario, .credit-full-report .cr-loan-card, .credit-full-report .cr-inspection-item, .credit-full-report .cr-empty, .credit-full-report .cr-note, .credit-full-report .cr-open-list li, .credit-full-report .cr-narrative-list li { break-inside: avoid-page; }
+  .credit-full-report #cr-section-07 .cr-narrative-list { break-inside: avoid-page; }
   .credit-full-report .cr-stat-grid, .credit-full-report .cr-indicator-grid, .credit-full-report .cr-ratio-grid, .credit-full-report .cr-change-grid, .credit-full-report .cr-finding-grid, .credit-full-report .cr-scenario-grid, .credit-full-report .cr-inspection-fields, .credit-full-report .cr-loan-grid { gap: 2.5mm; }
   .credit-full-report #cr-section-08 > .cr-loan-grid ~ h3 { margin-top: 8mm; padding-top: 4mm; border-top: 1px solid #cbd8d0; }
   .credit-full-report .cr-scenario-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }

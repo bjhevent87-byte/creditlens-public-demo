@@ -53,7 +53,22 @@
     <div class="manual-section-head" id="manual-financial-heading"><p class="eyebrow">DETAILS / EVIDENCE</p><h2>계산·근거 상세</h2></div><section class="panel manual-results" id="manual-results" hidden aria-live="polite"></section><div class="manual-empty" id="manual-analysis-empty">고객 제출 재무자료를 분석하면 요약과 계산 근거가 나옵니다.</div>
     </div>
     <div data-manual-page="inspection" hidden><div class="manual-section-head manual-inspection-heading"><div><p class="eyebrow">FIELD INSPECTION</p><h1>현장실사 기록</h1><p>항목을 열어 관찰 사실·증빙·후속조치를 기록하세요.</p></div><button class="secondary-button" id="manual-print-inspection" type="button" disabled>빈 현장 점검지 인쇄·PDF</button></div><section class="panel manual-results" id="manual-inspection-content"><div class="manual-empty">분석 후 업종과 신청 목적에 맞는 점검 항목이 생성됩니다.</div></section></div>
-    <div data-manual-page="opinion" hidden><div class="manual-section-head manual-final-heading"><div><p class="eyebrow">FINAL CREDIT REVIEW</p><h1>최종 기업분석 보고서</h1><p>12장 구성 · 현장실사 기록 포함</p></div><div class="manual-final-actions"><button class="secondary-button" id="manual-save-report" type="button">HTML 저장</button><button class="primary-small" id="manual-print" type="button">PDF 인쇄·저장</button></div></div><section class="manual-final-report" id="manual-final-report"><div class="manual-empty">분석 결과와 현장실사 기록을 입력하면 전체 보고서가 나옵니다.</div></section><details class="manual-summary-details"><summary>간단 심사의견 요약 보기</summary><section class="panel manual-results" id="manual-opinion-content"><div class="manual-empty">분석 결과와 현장실사 기록을 입력하면 요약 의견이 나옵니다.</div></section></details></div>
+    <div data-manual-page="opinion" hidden>
+      <div class="manual-section-head manual-final-heading"><div><p class="eyebrow">FINAL CREDIT REVIEW</p><h1>최종 기업분석 보고서</h1><p>12장 구성 · 현장실사 기록 포함</p></div><div class="manual-final-actions"><button class="secondary-button" id="manual-save-report" type="button">HTML 저장</button><button class="primary-small" id="manual-print" type="button">PDF 인쇄·저장</button></div></div>
+      <details class="manual-report-editor" id="manual-report-editor">
+        <summary><span>산업·경영진 내용 보완</span><small>03·04장 · 근거와 함께 반영</small></summary>
+        <div class="manual-report-editor-body">
+          <p>확인한 사실과 원문 페이지 또는 면담일을 입력하세요. 재무 숫자는 바뀌지 않습니다.</p>
+          <div class="manual-report-editor-grid">
+            <section><h2>03 산업·시장 환경</h2><label>보고서 문구<textarea id="manual-report-industry-text" maxlength="1200" rows="3" placeholder="예: 주요 매출처의 발주량과 원재료 단가 변화를 확인한 내용"></textarea></label><label>근거·페이지<input id="manual-report-industry-source" maxlength="180" placeholder="예: 2025 감사보고서 p.12 / 2026-10-15 면담" /></label></section>
+            <section><h2>04 경영진·지배구조</h2><label>보고서 문구<textarea id="manual-report-management-text" maxlength="1200" rows="3" placeholder="예: 대표이사 이력, 의사결정 체계, 관계회사 거래 확인 내용"></textarea></label><label>근거·페이지<input id="manual-report-management-source" maxlength="180" placeholder="예: 2025 사업보고서 p.8 / 2026-10-15 면담" /></label></section>
+          </div>
+          <div class="manual-report-editor-actions"><button class="primary-small" id="manual-apply-report-edits" type="button">보고서에 반영</button><button class="secondary-button" id="manual-clear-report-edits" type="button">보완 내용 지우기</button><span id="manual-report-edit-status" role="status">작성 내용은 이 탭에서만 유지됩니다.</span></div>
+        </div>
+      </details>
+      <section class="manual-final-report" id="manual-final-report"><div class="manual-empty">분석 결과와 현장실사 기록을 입력하면 전체 보고서가 나옵니다.</div></section>
+      <details class="manual-summary-details"><summary>간단 심사의견 요약 보기</summary><section class="panel manual-results" id="manual-opinion-content"><div class="manual-empty">분석 결과와 현장실사 기록을 입력하면 요약 의견이 나옵니다.</div></section></details>
+    </div>
   </main>
   </div>
   <div id="manual-inspection-print-sheet" aria-hidden="true"></div>

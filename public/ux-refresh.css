@@ -230,10 +230,10 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 .report-tabs button { color: #5c6e80; font-size: 15px; }
 .report-tabs button.active { color: #1765d1; border-bottom-color: #3182f6; }
 .report-sheet { border: 1px solid #e1e9f1; border-top: 4px solid #3182f6; border-radius: 12px; background: #fff; box-shadow: none; }
-.report-sheet h3 { color: #191f28; }
-.report-sheet h4 { color: #25384c; }
-.report-sheet p, .report-sheet li { color: #445568; }
-footer { color: #6b7684; background: #f7f9fc; border-top: 1px solid #e5eaf0; }
+.report-sheet:not(.full-report-preview) h3 { color: #191f28; }
+.report-sheet:not(.full-report-preview) h4 { color: #25384c; }
+.report-sheet:not(.full-report-preview) p, .report-sheet:not(.full-report-preview) li { color: #445568; }
+body > footer { color: #6b7684; background: #f7f9fc; border-top: 1px solid #e5eaf0; }
 
 @media (max-width: 1500px) {
   .summary-grid.interim-mode { grid-template-columns: repeat(3, minmax(0, 1fr)); }

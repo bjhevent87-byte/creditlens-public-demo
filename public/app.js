@@ -9,6 +9,7 @@ const state = {
   analysis: null,
   stress: null,
   report: "full",
+  reportEdits: {},
   loanView: "integrated",
   financialView: null,
   performanceView: null,
@@ -225,6 +226,8 @@ async function analyze(demo = false) {
     state.reviewOutcome = null;
     if (!sameCompany) {
       state.report = "full";
+      state.reportEdits = {};
+      syncReportEditInputs();
       state.findingReviews = {};
       state.attachments.filter((file) => file.sessionOnly && file.objectUrl).forEach((file) => URL.revokeObjectURL(file.objectUrl));
       state.attachments = [];
@@ -1842,6 +1845,7 @@ function fullListedReportModel() {
     structure: currentScopeIsBorrower ? state.structure : null,
     inspectionNotes: $("#inspection-notes").value,
     siteUtilization,
+    reportEdits: state.reportEdits,
   });
 }
 
@@ -1866,10 +1870,76 @@ function reportContent(type) {
   return `${base}${appendix}`;
 }
 
+const REPORT_EDIT_KEYS = ["industry", "management"];
+
+function reportEditDrafts() {
+  return Object.fromEntries(REPORT_EDIT_KEYS.map((key) => [key, {
+    text: $(`#report-${key}-text`).value,
+    source: $(`#report-${key}-source`).value,
+  }]));
+}
+
+function syncReportEditInputs(drafts = state.reportEdits) {
+  for (const key of REPORT_EDIT_KEYS) {
+    $(`#report-${key}-text`).value = drafts?.[key]?.text || "";
+    $(`#report-${key}-source`).value = drafts?.[key]?.source || "";
+  }
+  setReportEditStatus("");
+  updateReportEditCount();
+}
+
+function setReportEditStatus(message, error = false) {
+  const status = $("#report-edit-status");
+  status.textContent = message;
+  status.classList.toggle("error", error);
+}
+
+function updateReportEditCount() {
+  const count = REPORT_EDIT_KEYS.filter((key) => state.reportEdits[key]?.text && state.reportEdits[key]?.source).length;
+  $("#report-edit-count").textContent = `${count}개 반영`;
+}
+
 function renderReport() {
   if (!state.analysis) return;
-  $("#report-sheet").innerHTML = reportContent(state.report);
+  $("#report").classList.toggle("full-report-mode", state.report === "full");
+  $("#report-edit-panel").hidden = state.report !== "full";
+  updateReportEditCount();
+  const sheet = $("#report-sheet");
+  sheet.classList.toggle("full-report-preview", state.report === "full");
+  sheet.innerHTML = reportContent(state.report);
 }
+
+function showFullReport() {
+  state.report = "full";
+  $$(".report-tabs button").forEach((item) => item.classList.toggle("active", item.dataset.report === "full"));
+  renderReport();
+}
+
+function applyReportEdits(announce = true) {
+  const drafts = reportEditDrafts();
+  const edits = {};
+  for (const key of REPORT_EDIT_KEYS) {
+    const text = drafts[key].text.trim();
+    const source = drafts[key].source.trim();
+    if (Boolean(text) !== Boolean(source)) {
+      showFullReport();
+      $("#report-edit-panel").open = true;
+      setReportEditStatus(`${key === "industry" ? "산업·시장 환경" : "경영진·지배구조"}: 내용과 확인 근거를 함께 입력해 주세요.`, true);
+      $(`#report-${key}-${text ? "source" : "text"}`).focus();
+      return false;
+    }
+    if (text) edits[key] = { text, source };
+  }
+  state.reportEdits = edits;
+  renderReport();
+  if (announce) setReportEditStatus(`${REPORT_EDIT_KEYS.filter((key) => edits[key]).length}개 장에 반영했습니다.`);
+  return true;
+}
+
+$("#apply-report-edits").addEventListener("click", () => applyReportEdits());
+$("#report-edit-panel").addEventListener("input", () => {
+  setReportEditStatus("수정 내용을 반영하면 보고서가 갱신됩니다.");
+});
 
 $(".report-tabs").addEventListener("click", (event) => {
   const button = event.target.closest("button[data-report]");
@@ -1881,18 +1951,24 @@ $(".report-tabs").addEventListener("click", (event) => {
 
 $("#print-report").addEventListener("click", () => {
   if (!state.analysis) return;
-  state.report = "full";
-  $$(".report-tabs button").forEach((item) => item.classList.toggle("active", item.dataset.report === "full"));
-  renderReport();
+  if (!applyReportEdits(false)) return;
+  showFullReport();
   window.print();
 });
 $("#save-report").addEventListener("click", async () => {
   if (!state.analysis) return;
+  if (!applyReportEdits(false)) return;
   const button = $("#save-report");
   button.disabled = true;
   try {
+    showFullReport();
     const model = fullListedReportModel();
-    const documentHtml = await renderFullReportDocument(model);
+    const visibleMarkup = $("#report-sheet").innerHTML;
+    const cssResponse = await fetch(new URL("./final-report.css", import.meta.url));
+    if (!cssResponse.ok) throw new Error(`보고서 스타일을 읽지 못했습니다 (${cssResponse.status}).`);
+    const reportCss = await cssResponse.text();
+    if (!reportCss.includes(".credit-full-report")) throw new Error("보고서 스타일 형식이 올바르지 않습니다.");
+    const documentHtml = await renderFullReportDocument(model, reportCss, visibleMarkup);
     const blob = new Blob([documentHtml], { type: "text/html;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
@@ -1907,7 +1983,7 @@ $("#save-report").addEventListener("click", async () => {
   }
 });
 $("#download-json").addEventListener("click", () => {
-  const blob = new Blob([JSON.stringify({ ...state.analysis, stress: state.stress, inspectionStatus: state.inspectionStatus, inspectionDetails: state.inspectionDetails, inspectionMemory: state.inspectionMemory }, null, 2)], { type: "application/json" });
+  const blob = new Blob([JSON.stringify({ ...state.analysis, stress: state.stress, inspectionStatus: state.inspectionStatus, inspectionDetails: state.inspectionDetails, inspectionMemory: state.inspectionMemory, reportEdits: state.reportEdits }, null, 2)], { type: "application/json" });
   const anchor = document.createElement("a");
   anchor.href = URL.createObjectURL(blob);
   anchor.download = `${state.analysis.company.name}_여신검토_${state.analysis.basisDate}.json`;
@@ -1926,7 +2002,7 @@ async function saveCurrentCase() {
   const summary = `${state.reviewOutcome?.working?.status || "운전자금 미검토"} / ${state.reviewOutcome?.facility?.status || "시설자금 미검토"}`;
   const response = await fetchJson("/api/cases", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
     id: state.caseId, companyName: state.analysis.company.name, corpCode: state.analysis.company.corpCode, summary,
-    snapshot: { analysis: state.analysis, structure: state.structure, stress: state.stress, reviewOutcome: state.reviewOutcome, findingReviews: state.findingReviews, attachments: state.attachments, industryEvidence: state.industryEvidence, debtRegister: state.debtRegister, debtRegisterComplete: $("#debt-register-complete").checked, inspectionStatus: state.inspectionStatus, inspectionDetails: state.inspectionDetails, inspectionMemory: state.inspectionMemory, inputValues: caseInputValues(), statementScope: state.statementScope, report: state.report },
+    snapshot: { analysis: state.analysis, structure: state.structure, stress: state.stress, reviewOutcome: state.reviewOutcome, findingReviews: state.findingReviews, attachments: state.attachments, industryEvidence: state.industryEvidence, debtRegister: state.debtRegister, debtRegisterComplete: $("#debt-register-complete").checked, inspectionStatus: state.inspectionStatus, inspectionDetails: state.inspectionDetails, inspectionMemory: state.inspectionMemory, reportEdits: state.reportEdits, reportEditDrafts: reportEditDrafts(), inputValues: caseInputValues(), statementScope: state.statementScope, report: state.report },
   }) });
   state.caseId = response.id;
   state.caseRevision = response.revision;
@@ -1983,6 +2059,8 @@ $("#saved-cases").addEventListener("click", async (event) => {
     state.inspectionStatus = saved.inspectionStatus || {};
     state.inspectionDetails = saved.inspectionDetails || {};
     state.inspectionMemory = saved.inspectionMemory || {};
+    state.reportEdits = saved.reportEdits || {};
+    syncReportEditInputs(saved.reportEditDrafts || state.reportEdits);
     state.statementScope = saved.statementScope || saved.analysis.primaryFsDiv || "OFS";
     state.report = ["full", "opinion", "inspection", "sources"].includes(saved.report) ? saved.report : "full";
     state.caseId = record.id;

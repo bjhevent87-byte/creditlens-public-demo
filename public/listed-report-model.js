@@ -1,3 +1,5 @@
+import { applyReportEdits } from "./report-edits.js";
+
 const hasValue = (value) => Number.isFinite(Number(value)) && value !== null && value !== undefined && value !== "";
 const money = (value) => hasValue(value) ? `${(Number(value) / 100_000_000).toLocaleString("ko-KR", { maximumFractionDigits: 1 })}억원` : "자료 확인 필요";
 const ratio = (value, digits = 1, unit = "%") => hasValue(value) ? `${Number(value).toLocaleString("ko-KR", { maximumFractionDigits: digits })}${unit}` : "자료 확인 필요";
@@ -52,8 +54,6 @@ export function buildListedReportModel(analysis, context = {}) {
   const demo = /교육용|가상/.test(String(analysis.mode || "")) || /교육용|가상/.test(String(latest.source || ""));
   const flags = Array.isArray(borrower.assessment?.redFlags) ? borrower.assessment.redFlags : [];
   const cashInsights = Array.isArray(borrower.cashFlowAnalysis?.insights) ? borrower.cashFlowAnalysis.insights : [];
-  const workingRules = borrower.decisionSupport?.workingCapital?.appliedRules || [];
-  const facilityRules = borrower.decisionSupport?.facility?.appliedRules || [];
   const inspection = Array.isArray(context.inspections) ? context.inspections : (borrower.inspection || []).map((item) => ({
     category: item.category, question: item.question, status: "미확인", observation: "", evidence: "", action: "", files: [],
   }));
@@ -73,75 +73,63 @@ export function buildListedReportModel(analysis, context = {}) {
   const basisLabel = scope === "OFS" ? "별도재무제표 · 차주 법인" : "연결재무제표 · 차주 별도자료 미확인";
 
   const summaryBullets = nonempty([
-    analysis.dataQuality?.yearFallback ? `요청 기준연도 ${analysis.dataQuality.requestedYear}년의 연간 사업보고서는 아직 없어 ${analysis.dataQuality.latestAvailableYear || latest.period}년 연간자료를 사용했습니다. ${focusInterim ? `${interim.period} 누적 실적을 첫 요약에 별도로 제시합니다.` : "당해연도 중간 실적도 추가 확인해야 합니다."}` : null,
-    `${period(latest)} ${basisLabel}: 매출 ${money(latest.revenue)}, 영업이익 ${money(latest.operatingProfit)}, 영업활동현금흐름 ${money(latest.operatingCashFlow)}.`,
-    interim ? `${interim.period} 누적: 매출 ${money(interim.revenue)}, 영업이익 ${money(interim.operatingProfit)}, 영업활동현금흐름 ${money(interim.operatingCashFlow)}. ${interim.comparisonPeriod || "전년 동기 비교자료 없음"}와만 비교합니다.` : "최신 중간재무를 확인하지 못했습니다. 연간 실적 이후의 변화를 별도로 확인해야 합니다.",
-    flags.length ? `규칙 기반 우선 확인 ${flags.length}건: ${flags.slice(0, 4).map((item) => item.title).join(" · ")}. 원인 확정이 아니라 검증 대상입니다.` : "설정된 수치 임계치의 자동 경고는 없습니다. 위험 부재나 승인 가능을 뜻하지 않습니다.",
-    `현장실사 ${completed}/${inspection.length}건에 관찰 사실·확인 근거·후속조치가 함께 기록됐습니다. 미확인 항목은 최종 의견에서 제외하지 않습니다.`,
+    analysis.dataQuality?.yearFallback ? `${analysis.dataQuality.requestedYear}년 사업보고서 미공시 → ${analysis.dataQuality.latestAvailableYear || latest.period}년 연간자료 사용` : null,
+    analysis.dataQuality?.yearFallback && focusInterim ? `${interim.period} 누적 실적을 첫 요약에 별도 표시` : null,
+    focusInterim ? `${period(latest)} ${basisLabel}: 매출 ${money(latest.revenue)}, 영업이익 ${money(latest.operatingProfit)}, 영업활동현금흐름 ${money(latest.operatingCashFlow)}.` : null,
+    interim ? { text: `${interim.period} 누적: 매출 ${money(interim.revenue)}, 영업이익 ${money(interim.operatingProfit)}, 영업활동현금흐름 ${money(interim.operatingCashFlow)}.`, detail: `${interim.comparisonPeriod || "전년 동기 비교자료 없음"}와 비교` } : "최신 중간재무 없음 · 최근 월별 실적 확인",
+    flags.length ? `규칙 기반 우선 확인 ${flags.length}건: ${flags.slice(0, 4).map((item) => item.title).join(" · ")}` : "규칙 기반 우선 확인 0건",
+    `현장실사 ${completed}/${inspection.length}건 기록 완료 · 관찰 사실·근거·후속조치`,
   ]);
 
   const macroBullets = relevantMacro.map((item) => item.latest && hasValue(item.latest.value)
-    ? `${item.name}: ${ratio(item.latest.value, 2, item.unit ? ` ${item.unit}` : "")} (${item.latest.date || "수록시점 확인 필요"}; ${item.source || "출처 확인 필요"}). 기업 매출·원가·차입금과의 실제 노출은 별도 확인해야 합니다.`
-    : `${item.name}: 최신 수치 확인 필요 (${item.source || "출처 확인 필요"}).`);
-  const industryBullets = industryEvidence.map((item) => `${item.name || "업종지표"} ${item.period || "기간 미확인"}: ${hasValue(item.previous) ? item.previous : "자료없음"} → ${hasValue(item.latest) ? item.latest : "자료없음"}${item.unit || ""}. 회사 매출노출 ${hasValue(item.exposure) ? ratio(item.exposure, 1) : "미확인"}; ${item.verification || "원자료·기업노출 대조 전"}.`);
+    ? `${item.name} ${ratio(item.latest.value, 2, item.unit ? ` ${item.unit}` : "")} · ${item.latest.date || "수록시점 확인 필요"}`
+    : `${item.name} · 최신 수치 확인 필요`);
   const operationsBullets = nonempty([
-    hasValue(latest.dso) || hasValue(latest.dio) || hasValue(latest.dpo) ? `매출채권 회수 ${ratio(latest.dso, 1, "일")}, 재고 보유 ${ratio(latest.dio, 1, "일")}, 매입채무 결제 ${ratio(latest.dpo, 1, "일")}; 현금전환주기 ${ratio(latest.cashConversionCycle, 1, "일")} (${period(latest)} 연간). 계정 범위와 평균잔액은 원문 대조가 필요합니다.` : null,
-    context.siteUtilization ? `현장 입력 가동률: 이전 ${ratio(context.siteUtilization.previous)} → 현재 ${ratio(context.siteUtilization.current)} (변화 ${ratio(context.siteUtilization.current - context.siteUtilization.previous, 1, "%p")}). 산출기간·분모·설비별 원자료 대조 전입니다.` : null,
-    ...cashInsights.map((item) => `${item.title}: ${item.meaning}`),
-    "공급처·주요 고객·상품 또는 생산라인별 실제 운영상황은 공시 재무계정만으로 확인하지 못합니다. 현장 기록 및 계약·매출 자료와 대조해야 합니다.",
+    hasValue(latest.dso) || hasValue(latest.dio) || hasValue(latest.dpo) ? `${period(latest)} 회수 ${ratio(latest.dso, 1, "일")} + 재고 ${ratio(latest.dio, 1, "일")} − 결제 ${ratio(latest.dpo, 1, "일")} = 현금전환주기 ${ratio(latest.cashConversionCycle, 1, "일")}` : null,
+    context.siteUtilization ? `현장 가동률 ${ratio(context.siteUtilization.previous)} → ${ratio(context.siteUtilization.current)} (${ratio(context.siteUtilization.current - context.siteUtilization.previous, 1, "%p")})` : null,
+    ...cashInsights.slice(0, 3).map((item) => `${item.title}: ${item.meaning}`),
   ]);
   const debtBullets = nonempty([
-    `${period(latest)} 구조화 자료에서 확인된 차입·사채 계정 합계(리스 제외) ${money(latest.totalDebt)}, 부채비율 ${ratio(latest.debtRatio)}, 유동비율 ${ratio(latest.currentRatio)}, ${latest.financeCostsSource === "이자비용 대체값" ? "영업이익/이자비용(대체)" : "영업이익/금융비용"} ${ratio(latest.financeCostCoverage, 2, "배")}. 누락 계정과 만기분류는 주석 대조 전입니다.`,
-    hasValue(latest.shortTermDebtShare) ? `구조화 계정 기준 1년 내 차입·사채 비중 ${ratio(latest.shortTermDebtShare)}. 누락 계정, 유동성 대체, 차환약정·리스·보증을 주석과 차입명세로 확인해야 합니다.` : "1년 내 차입·사채 비중을 구조화 계정에서 확정하지 못했습니다. 주석의 유동성 대체·사채·리스 구분을 확인해야 합니다.",
-    group ? `연결(그룹) ${group.period}년 영업활동현금흐름 ${money(group.operatingCashFlow)}, 금융차입금 ${money(group.totalDebt)}. 그룹 현금이 차주 법인의 직접 상환재원이라는 뜻은 아닙니다.` : "연결 그룹 수치를 별도로 확보하지 못했습니다. 종속회사 손실·보증·자금지원 위험을 원문에서 확인해야 합니다.",
-    context.debtSummary?.trusted ? `고객 차입명세 대조: 12개월 내 만기 ${ratio(context.debtSummary.dueWithin12, 1, "억원")}, 변동금리 비중 ${ratio(context.debtSummary.variableShare)}. 차입명세의 원본 대조 기록을 확인해야 합니다.` : "기존 차입별 만기·금리조건·담보·보증은 원문과 고객 제출자료 대조 전입니다.",
-  ]);
-  const purposeBullets = nonempty([
-    Number(request.workingAmount) > 0 ? `운전자금 ${request.workingAmount}억원·${request.workingTermMonths || "기간 미입력"}개월: ${borrower.decisionSupport?.workingCapital?.stance || "검토 전"}. ${workingRules.map((rule) => `${rule.title} ${rule.result} (${rule.calculation})`).join("; ") || "회전기간과 월별 회수재원 확인 필요"}.` : null,
-    Number(request.facilityAmount) > 0 ? `시설자금 ${request.facilityAmount}억원·${request.facilityTermMonths || "기간 미입력"}개월: ${borrower.decisionSupport?.facility?.stance || "검토 전"}. ${facilityRules.map((rule) => `${rule.title} ${rule.result} (${rule.calculation})`).join("; ") || "투자집행·가동·장기 현금창출 확인 필요"}.` : null,
-    !Number(request.workingAmount) && !Number(request.facilityAmount) ? "신청 여신 금액이 입력되지 않았습니다. 자금용도별 상환 판단 전입니다." : null,
+    `${period(latest)} 차입·사채(리스 제외) ${money(latest.totalDebt)} · 1년 내 비중 ${ratio(latest.shortTermDebtShare)}`,
+    group ? `그룹 연결 ${group.period}년 영업현금 ${money(group.operatingCashFlow)} · 차입금 ${money(group.totalDebt)} (차주 별도재원과 구분)` : null,
+    context.debtSummary?.trusted ? `고객 차입명세: 12개월 내 만기 ${ratio(context.debtSummary.dueWithin12, 1, "억원")} · 변동금리 ${ratio(context.debtSummary.variableShare)}` : "차입 만기·담보·보증 주석 확인 전",
   ]);
   const stress = context.stress;
-  const scenarioBullets = nonempty([
-    stress?.available && stress.simple && stress.baseline && stress.stressed
-      ? `사용자 가정에 따른 단순 민감도: 연간 매출 ${money(stress.baseline.revenue)} → ${money(stress.stressed.revenue)}, 영업이익 ${money(stress.baseline.operatingProfit)} → ${money(stress.stressed.operatingProfit)}. 미래 예측 또는 원리금 상환 가능액이 아닙니다.`
-      : "매출·영업이익 민감도는 계산하지 않았거나 필수 재무값이 부족합니다. 결측값을 0으로 보지 않습니다.",
-    ...purposeBullets,
-    context.structure?.basis ? `고객 현금수지 입력 기준: ${context.structure.basis}. 은행 승인한도나 제시금리가 아닙니다.` : "월별 자금수지와 기존 원리금 일정이 없어 적정금액·상환구조는 산정하지 않습니다.",
-  ]);
   const reviewedFindings = Array.isArray(review.findings) ? review.findings : [];
   const resolved = reviewedFindings.filter((item) => item.status === "해소");
   const pending = reviewedFindings.filter((item) => item.status !== "해소");
   const opinionBullets = nonempty([
-    Number(request.workingAmount) > 0 ? `운전자금: ${onsiteGate || review.working?.status || "심사 전"}. ${onsiteGate ? "현장 관찰·증빙의 해소 여부와 회수자료를 다시 확인해야 합니다." : review.working?.explanation || "실제 회전재원과 만기 내 현금회수 자료 확인이 필요합니다."}` : null,
-    Number(request.facilityAmount) > 0 ? `시설자금: ${onsiteGate || review.facility?.status || "심사 전"}. ${onsiteGate ? "현장 관찰·증빙의 해소 여부와 투자·가동자료를 다시 확인해야 합니다." : review.facility?.explanation || "투자계약·자기자금·투자 후 원리금 일정 확인이 필요합니다."}` : null,
-    `증빙으로 해소 기록 ${resolved.length}건, 미해결·추가 확인 ${pending.length}건. 파일 첨부만으로 우려가 해소되지는 않습니다.`,
-    ...resolved.slice(0, 5).map((item) => `${item.title}: ${item.note || "해소 판단 근거 미기록"} (담당자 판단이며 심사역 재확인 대상).`),
-    context.inspectionNotes ? `현장 종합 메모: ${context.inspectionNotes}` : "현장 종합 메모가 입력되지 않았습니다.",
+    Number(request.facilityAmount) > 0 ? `시설자금: ${onsiteGate || review.facility?.status || "심사 전"}` : null,
+    `우려 해소 ${resolved.length}건 · 미해결·추가 확인 ${pending.length}건`,
+    ...resolved.slice(0, 3).map((item) => `${item.title}: ${item.note || "해소 근거 미기록"}`),
+    context.inspectionNotes ? `현장 메모: ${context.inspectionNotes}` : null,
   ]);
   const workingReview = Number(request.workingAmount) > 0 ? {
     status: onsiteGate || review.working?.status || borrower.decisionSupport?.workingCapital?.stance || "상환구조 검증 전",
-    evidence: `${period(latest)} 현금전환주기 ${ratio(latest.cashConversionCycle, 1, "일")}, 영업활동현금흐름 ${money(latest.operatingCashFlow)}${interim ? `; 최근 ${interim.period} 누적 영업현금 ${money(interim.operatingCashFlow)}` : ""}.`,
-    concern: flags.length ? `우선 확인 신호 ${flags.length}건의 자금회전·회수 영향을 원자료와 대조해야 합니다.` : "월별 매입·판매·회수 일정과 실제 대출 만기 내 회수가능액을 확인해야 합니다.",
-    condition: onsiteGate ? "현장 우려·미확인 항목을 대조하고, 매출채권 연령표와 월별 자금수지 확인 후 금액·만기·상환방식을 심사역이 검토합니다." : review.working?.explanation || "매출채권 연령표와 월별 자금수지 확인 후 금액·만기·상환방식을 심사역이 검토합니다.",
+    evidence: `${period(latest)} 현금전환주기 ${ratio(latest.cashConversionCycle, 1, "일")} · 영업현금 ${money(latest.operatingCashFlow)}${interim ? ` · ${interim.period} 누적 영업현금 ${money(interim.operatingCashFlow)}` : ""}`,
+    concern: flags.length ? `우선 확인 신호 ${flags.length}건 · 회수 영향 확인` : "월별 회수액·만기 내 입금액 확인 전",
+    condition: onsiteGate ? "현장 우려 재판단 · 채권 Aging·월별 자금수지 확인 후 조건 검토" : review.working?.explanation || "채권 Aging·월별 자금수지 확인 후 조건 검토",
   } : null;
   const facilityReview = Number(request.facilityAmount) > 0 ? {
     status: onsiteGate || review.facility?.status || borrower.decisionSupport?.facility?.stance || "투자 후 현금흐름 검증 전",
-    evidence: `${period(latest)} 영업활동현금흐름 ${money(latest.operatingCashFlow)}, 유형·무형자산 취득 ${money(latest.totalCapex)}, 영업이익 ${money(latest.operatingProfit)}.`,
-    concern: "투자 집행·가동·수주·추가 현금창출과 기존 원리금 일정을 연결한 검증이 필요합니다.",
-    condition: onsiteGate ? "현장 우려·미확인 항목을 대조하고, 투자계약·자기자금·가동계획과 연도별 현금수지 확인 후 장기 상환조건을 심사역이 검토합니다." : review.facility?.explanation || "투자계약, 자기자금, 가동·판매계획과 연도별 현금수지 확인 후 장기 상환조건을 심사역이 검토합니다.",
+    evidence: `${period(latest)} 영업현금 ${money(latest.operatingCashFlow)} · CAPEX ${money(latest.totalCapex)} · 영업이익 ${money(latest.operatingProfit)}`,
+    concern: "투자·가동·수주·기존 원리금 일정 확인 전",
+    condition: onsiteGate ? "현장 우려 재판단 · 투자계약·자기자금·가동계획·연도별 현금수지 확인" : review.facility?.explanation || "투자계약·자기자금·가동계획·연도별 현금수지 확인",
   } : null;
   const scenarioRows = stress?.available && stress.simple && stress.baseline && stress.stressed ? [{
     name: "매출·영업이익 단순 민감도",
     assumptions: `매출 변화 ${ratio(stress.assumptions?.salesShockPct, 1)}, 영업이익률 변화 ${ratio(stress.assumptions?.marginShockPp, 1, "%p")}`,
     results: `매출 ${money(stress.baseline.revenue)} → ${money(stress.stressed.revenue)}; 영업이익 ${money(stress.baseline.operatingProfit)} → ${money(stress.stressed.operatingProfit)}`,
-    interpretation: stress.interpretation || "가정에 따른 민감도이며 예측값이 아닙니다.",
-    limitations: "신규 대출 이자·원금, 실제 현금흐름, 승인가능액은 계산하지 않았습니다.",
+    interpretation: "공시 연간 실적에 사용자 가정 적용",
+    limitations: "원리금·실제 현금흐름·여신한도 미산정",
   }] : [];
+  const auditBullets = analysis.supplementary?.audit?.opinions?.length
+    ? [`수신 감사의견: ${analysis.supplementary.audit.opinions.join(" · ")} · 원문 대조 필요`]
+    : [];
   const financialFindings = findingReviews.slice(0, 8).map((item) => ({
     title: item.title,
     observed: item.reason || `${item.metric || "재무 변화"} · 원계정 확인 필요`,
-    interpretation: "규칙이 우선 확인 신호로 분류했습니다. 제시된 문장은 원인 확정이나 위험등급이 아닙니다.",
+    interpretation: item.meaning || "원인 확인 전",
     check: item.id?.includes("receivable") ? "매출채권 연령표·거래처별 회수내역" : item.id?.includes("debt") ? "차입금 주석·만기표·실제 자금용도" : "공시 원계정·주석 및 고객 제출자료",
   }));
   const openItems = [
@@ -202,36 +190,33 @@ export function buildListedReportModel(analysis, context = {}) {
     loanReviews: {
       ...(workingReview ? { working: workingReview } : {}),
       ...(facilityReview ? { facility: facilityReview } : {}),
-      integrated: { text: "운전자금과 시설자금의 집행·상환 시점이 겹치는지, 단기 운전자금이 시설투자 공백을 메우는 구조인지 확인해야 합니다. 두 용도의 심사조건은 별도로 결정합니다." },
+      integrated: { text: "두 자금의 상환월 중복·운전자금의 시설투자 전용 여부 확인" },
     },
     scenarios: scenarioRows,
-    inspectionSummary: context.inspectionNotes || "현장실사 종합 메모가 입력되지 않았습니다. 항목별 관찰·근거·후속조치를 먼저 대조하세요.",
+    inspectionSummary: context.inspectionNotes || "현장실사 종합 메모 미입력",
     opinion: {
-      working: workingReview ? `${workingReview.status}. ${workingReview.condition}` : "신청 없음",
-      facility: facilityReview ? `${facilityReview.status}. ${facilityReview.condition}` : "신청 없음",
-      conditions: "미해소 우려와 현장실사 증빙을 대조하고, 고객의 월별 현금수지·차입 만기·담보 및 내부 정책에 따라 심사역이 금액·금리·만기를 별도 검토합니다.",
+      working: workingReview ? `${workingReview.status} · ${workingReview.condition}` : "신청 없음",
+      facility: facilityReview ? `${facilityReview.status} · ${facilityReview.condition}` : "신청 없음",
+      conditions: "미해소 우려·월별 자금수지·차입 만기·담보 확인 후 금액·금리·만기 검토",
     },
-    sections: {
-      summary: { text: `${demo ? "교육용 가상 재무자료" : "차주 법인의 공시 재무"}와 최신 중간실적을 구분해 상환능력의 관찰값과 미확인 사항을 제시합니다. 자동 판정은 여신 승인·거절 의견이 아닙니다.`, bullets: summaryBullets },
-      business: { text: `${company.name || "대상 기업"}의 ${demo ? "예시 기업개황" : "공시 기업개황"}은 식별 자료입니다. 사업별 매출·고객·공급처·자회사별 현금흐름을 자동으로 검증했다는 의미가 아닙니다.`, bullets: nonempty([`산업코드 ${companyInfo.induty_code || "원문 확인 필요"}; 대표자 ${companyInfo.ceo_nm || "원문 확인 필요"}; 주소 ${companyInfo.adres || "원문 확인 필요"}.`, "사업부문·판매채널·주요 매출처·합병 및 사업범위 변화는 사업보고서 본문과 고객 제출자료로 확인해야 합니다."]) },
-      industry: { text: `${context.industryLabel || "해당 업종"}에 관련된 ${demo ? "교육용 예시 지표" : "공식 지표"}를 보조 근거로 제시합니다. 수치의 방향만으로 해당 회사 매출·이익 변화를 단정하지 않습니다.`, bullets: [...macroBullets, ...industryBullets, ...(!macroBullets.length && !industryBullets.length ? ["기업 노출이 확인된 업종·거시 지표가 없습니다. 관련 원자료와 회사 매출·원가 노출비중 확인이 필요합니다."] : [])] },
-      management: { text: "경영진·지배구조·관계회사 지원은 재무계정만으로 확정할 수 없습니다. 공시 원문과 면담·현장 근거를 분리하여 검토합니다.", bullets: nonempty([`DART 기업개황 대표자: ${companyInfo.ceo_nm || "자료 확인 필요"}.`, analysis.supplementary?.audit?.opinions?.length ? `수신 감사의견: ${analysis.supplementary.audit.opinions.join(" · ")}. 감사보고서 원문과 핵심감사사항을 대조해야 합니다.` : "감사의견·핵심감사사항 원문 대조 필요.", "지배구조, 관계회사 보증·자금지원, 경영진 실행력은 사업보고서 주석·이사회 자료 및 현장 면담으로 확인해야 합니다."]) },
-      operations: { text: "매입·생산·판매·채권회수의 실제 운영은 재무지표와 현장 관찰을 함께 검증합니다. 아래 회전일은 공시 계정과 평균잔액에 근거한 추정입니다.", bullets: operationsBullets },
-      debt: { text: "차주 별도 수치와 그룹 연결 위험을 분리합니다. 구조화 자료의 차입·사채 계정 합계와 금융비용만으로 만기별 원리금 상환 여부를 확정하지 않습니다.", bullets: debtBullets },
-      scenario: { text: "시나리오는 사용자가 둔 가정에 따른 민감도이며 전망치·승인한도·금리 제안이 아닙니다. 운전자금과 시설자금을 따로 검토합니다.", bullets: scenarioBullets },
-      opinion: { text: `${demo ? "교육용 가상자료" : "공개자료"}, 고객자료, 현장실사로 확인된 사실과 미해소 위험을 분리한 심사 전 검토의견입니다. 최종 조건은 심사역의 내부 기준·증빙 대조 후 정합니다.`, bullets: opinionBullets },
-    },
+    sections: applyReportEdits({
+      summary: { bullets: summaryBullets },
+      business: { bullets: ["사업부문·판매채널·주요 거래처: 사업보고서·고객자료 확인"] },
+      industry: { text: macroBullets.length || industryEvidence.length ? `${context.industryLabel || "해당 업종"} · 관련 지표` : "업종·회사 노출 근거 입력 전", bullets: macroBullets },
+      management: { text: "경영진·지배구조 근거 입력 전", bullets: auditBullets.length ? auditBullets : ["감사의견 원문 확인 전"], persistentBullets: auditBullets },
+      operations: { bullets: operationsBullets },
+      debt: { bullets: debtBullets },
+      scenario: { text: "연간 매출·영업이익에 사용자 가정 적용" },
+      opinion: { bullets: opinionBullets },
+    }, context.reportEdits),
     inspections: inspection,
     openItems,
     sources,
     definitions,
     limitations: [
-      demo ? "이 보고서의 재무·거시 수치는 교육용 가상자료입니다. 공식 공시 또는 실무 여신 판단에 사용할 수 없습니다." : "공시 API 수치는 제출회사의 공시를 구조화한 자료로, 공시 원문·주석과 대조해야 합니다. 결측값을 0으로 계산하지 않습니다.",
-      ...(analysis.dataQuality?.yearFallback ? [`요청 기준연도 ${analysis.dataQuality.requestedYear}년 연간자료가 없어 ${analysis.dataQuality.latestAvailableYear || latest.period}년 연간 공시를 사용했습니다. 중간 누적자료는 전년 동기와만 비교합니다.`] : []),
-      "중간 손익·현금흐름은 누적액이며 전년 동기와 비교합니다. 연간 실적과 합산하지 않습니다.",
-      "구조화 공시에서 확인된 차입·사채 계정 합계는 누락 계정이 있을 수 있습니다. 만기·순수 이자비용·담보·보증·약정·관계회사 지원은 주석 및 고객자료 확인 전에는 확정하지 않습니다.",
-      "현장실사 기록과 첨부파일은 담당자 입력이며 파일의 진위나 내용이 자동 검증되었다는 뜻이 아닙니다.",
-      "이 보고서는 공개자료 기반 심사 지원자료이며 신용등급, 승인·거절, 적정 금액·금리·담보를 자동 결정하지 않습니다.",
+      demo ? "교육용 가상자료 · 실무 여신 판단에 사용 불가" : "공시 API 수신 · 원계정·주석 원문 대조 전",
+      "중간 누적실적은 전년 동기와 비교 · 연간 실적과 합산하지 않음",
+      "현장기록·첨부파일은 담당자 입력 · 파일 내용·진위 자동검증 아님",
     ],
   };
 }

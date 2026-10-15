@@ -313,16 +313,16 @@ a { color: inherit; text-decoration: none; }
 .report-tabs button { padding: 10px 13px; border: 0; border-bottom: 2px solid transparent; color: var(--muted); background: transparent; font-size: 10px; font-weight: 750; }
 .report-tabs button.active { color: var(--forest); border-color: var(--forest); }
 .report-sheet { min-height: 330px; padding: 30px; border: 1px solid var(--line); background: #fff; }
-.report-sheet h3 { margin: 0 0 6px; font-family: Georgia, "Batang", serif; font-size: 23px; }
-.report-sheet .report-meta { margin: 0 0 23px; color: var(--muted); font-size: 9px; }
-.report-sheet h4 { margin: 20px 0 7px; font-size: 12px; }
-.report-sheet p, .report-sheet li { color: #46524e; font-size: 10px; }
-.report-sheet ul, .report-sheet ol { padding-left: 18px; }
+.report-sheet:not(.full-report-preview) h3 { margin: 0 0 6px; font-family: Georgia, "Batang", serif; font-size: 23px; }
+.report-sheet:not(.full-report-preview) .report-meta { margin: 0 0 23px; color: var(--muted); font-size: 9px; }
+.report-sheet:not(.full-report-preview) h4 { margin: 20px 0 7px; font-size: 12px; }
+.report-sheet:not(.full-report-preview) p, .report-sheet:not(.full-report-preview) li { color: #46524e; font-size: 10px; }
+.report-sheet:not(.full-report-preview) ul, .report-sheet:not(.full-report-preview) ol { padding-left: 18px; }
 .source-table { width: 100%; border-collapse: collapse; font-size: 9px; }
 .source-table th, .source-table td { padding: 9px; border-bottom: 1px solid var(--line); text-align: left; }
 .source-table th { background: #f2f5f3; }
 
-footer { padding: 25px; color: #84908b; background: #122a25; text-align: center; font-size: 10px; }
+body > footer { padding: 25px; color: #84908b; background: #122a25; text-align: center; font-size: 10px; }
 
 /* Readability pass: designed to remain comfortable at 90% browser zoom. */
 body { font-size: 16px; }
@@ -334,7 +334,7 @@ body { font-size: 16px; }
 .section-heading p:not(.eyebrow), .field > span, .field small, .form-status,
 .workflow-card li span, .empty-state p, .analysis-header p:last-child,
 .chart-note, .loan-card ul, .disclaimer, .stress-result > p,
-.report-sheet p, .report-sheet li { font-size: 14px; }
+.report-sheet:not(.full-report-preview) p, .report-sheet:not(.full-report-preview) li { font-size: 14px; }
 .text-button, .workflow-card li b, .primary-small, .secondary-button,
 .search-results b, .search-results span, .amount-input b { font-size: 14px; }
 .field input, .field select { height: 48px; }
@@ -451,10 +451,10 @@ body { font-size: 16px; }
 .inspection-notes span { font-size: 15px; font-weight: 800; }
 .inspection-notes textarea { width: 100%; padding: 14px; border: 1px solid var(--line); border-radius: 9px; font: inherit; font-size: 14px; resize: vertical; }
 .report-tabs button { font-size: 14px; }
-.report-sheet h4 { font-size: 16px; }
-.report-sheet .report-meta { font-size: 12px; }
+.report-sheet:not(.full-report-preview) h4 { font-size: 16px; }
+.report-sheet:not(.full-report-preview) .report-meta { font-size: 12px; }
 .source-table { font-size: 13px; }
-footer { font-size: 13px; }
+body > footer { font-size: 13px; }
 
 /* 2026 modern trust theme: blue information hierarchy, high contrast, generous spacing */
 :root {
@@ -480,7 +480,7 @@ body { background: linear-gradient(180deg, #f8faff 0, #f2f6fb 520px, #f5f7fa 100
 .sidebar { background: rgba(255,255,255,.92); border-right-color: #dfe7f1; }
 .sidebar > a:hover, .sidebar > a.active { background: linear-gradient(135deg, #1358c2, #1769e0); box-shadow: 0 7px 18px rgba(23,105,224,.18); }
 .hero { min-height: 335px; background: radial-gradient(circle at 78% 8%, rgba(255,255,255,.24), transparent 28%), radial-gradient(circle at 8% 90%, rgba(136,201,255,.32), transparent 32%), linear-gradient(120deg, #0c4eb9, #1785df 58%, #9ca8ef 100%); }
-.hero h1, .section-heading h2, .workflow-card h2, .analysis-header h2, .performance-card h3, .loan-detail-card h3, .report-sheet h3 { font-family: "Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif; font-weight: 850; letter-spacing: -.035em; }
+.hero h1, .section-heading h2, .workflow-card h2, .analysis-header h2, .performance-card h3, .loan-detail-card h3, .report-sheet:not(.full-report-preview) h3 { font-family: "Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif; font-weight: 850; letter-spacing: -.035em; }
 .inquiry-card, .workflow-card, .panel, .empty-state { border-color: #e1e8f2; border-radius: 18px; box-shadow: var(--shadow); }
 .analysis-header { color: #fff; border: 0; border-radius: 20px; background: linear-gradient(120deg, #102f63, #1558b5 70%, #2378dc); box-shadow: 0 20px 45px rgba(17,61,132,.2); }
 .analysis-header .eyebrow, .analysis-header p:last-child, .analysis-header .freshness { color: rgba(255,255,255,.78); }
@@ -552,13 +552,13 @@ body { background: linear-gradient(180deg, #f8faff 0, #f2f6fb 520px, #f5f7fa 100
 .inspection-item { border-color: #dfe7f2; border-radius: 12px; background: #fff; }
 .report-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .report-sheet { border-color: #dce5ef; border-top: 7px solid #1769e0; border-radius: 6px; box-shadow: 0 13px 35px rgba(31,67,120,.07); }
-.report-sheet h4 { padding-bottom: 7px; border-bottom: 2px solid #e8eef7; }
+.report-sheet:not(.full-report-preview) h4 { padding-bottom: 7px; border-bottom: 2px solid #e8eef7; }
 .report-overview-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .report-overview-table th, .report-overview-table td { padding: 10px 12px; border-bottom: 1px solid #dfe7f1; text-align: left; }
 .report-overview-table th { width: 16%; color: #28496f; background: #f2f6fb; }
 .report-financial-table th:not(:first-child), .report-financial-table td { text-align: right; }
 .report-financial-table tbody th { color: #28496f; background: #f8fafd; }
-footer { color: rgba(255,255,255,.72); background: #102d5b; }
+body > footer { color: rgba(255,255,255,.72); background: #102d5b; }
 
 /* Readability and evidence-first analysis */
 .statement-switch { display: flex; gap: 6px; padding: 4px; border: 1px solid rgba(255,255,255,.25); border-radius: 10px; background: rgba(255,255,255,.08); }
@@ -699,7 +699,7 @@ footer { color: rgba(255,255,255,.72); background: #102d5b; }
 }
 
 @media print {
-  .topbar, .sidebar, .hero, .inquiry-grid, .empty-state, .analysis-actions, .report-tabs, footer { display: none !important; }
+  .topbar, .sidebar, .hero, .inquiry-grid, .empty-state, .analysis-actions, .report-tabs, body > footer { display: none !important; }
   body { background: white; }
   .app-shell { display: block; }
   .content { padding: 0; }
@@ -942,8 +942,8 @@ body { font-size: 17px; }
 .section-heading p:not(.eyebrow) { font-size: 16px; line-height: 1.65; }
 .primary-small, .secondary-button, .report-tabs button { min-height: 46px; font-size: 16px; }
 .data-warning, .disclaimer, .structure-basis { font-size: 15px; line-height: 1.65; }
-.content .panel p:not(.eyebrow), .content .panel li { font-size: 15px; line-height: 1.65; }
-.content .panel .report-sheet p, .content .panel .report-sheet li { font-size: 16px; line-height: 1.7; }
+.content .panel:not(.full-report-mode) p:not(.eyebrow), .content .panel:not(.full-report-mode) li { font-size: 15px; line-height: 1.65; }
+.content .panel .report-sheet:not(.full-report-preview) p, .content .panel .report-sheet:not(.full-report-preview) li { font-size: 16px; line-height: 1.7; }
 .summary-card dt, .summary-card dd, .summary-card p, .summary-card .status,
 .metric-years b, .metric-years span, .macro-card .delta,
 .inspection-item .category, .inspection-item select,
@@ -1026,10 +1026,10 @@ body { font-size: 17px; }
 .report-tabs { gap: 8px; flex-wrap: wrap; }
 .report-tabs button { padding: 11px 15px; }
 .report-sheet { padding: 32px; line-height: 1.7; }
-.report-sheet h3 { font-family: inherit; font-size: 28px; line-height: 1.35; }
-.report-sheet h4 { margin-top: 27px; font-size: 20px; line-height: 1.4; }
-.report-sheet p, .report-sheet li, .source-table { font-size: 16px; line-height: 1.7; }
-.report-sheet .report-meta { color: #5d7086; font-size: 14px; }
+.report-sheet:not(.full-report-preview) h3 { font-family: inherit; font-size: 28px; line-height: 1.35; }
+.report-sheet:not(.full-report-preview) h4 { margin-top: 27px; font-size: 20px; line-height: 1.4; }
+.report-sheet:not(.full-report-preview) p, .report-sheet:not(.full-report-preview) li, .source-table { font-size: 16px; line-height: 1.7; }
+.report-sheet:not(.full-report-preview) .report-meta { color: #5d7086; font-size: 14px; }
 .source-table th, .source-table td { padding: 11px 12px; vertical-align: top; }
 .source-intro { margin: 12px 0 20px; color: #526983; }
 .source-summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 13px; }
@@ -1103,7 +1103,7 @@ body { font-size: 17px; }
 #inspection-print-sheet { display: none; }
 @media print {
   @page { size: A4; margin: 13mm 14mm; }
-  body.print-inspection-form .app-shell, body.print-inspection-form footer { display: none !important; }
+  body.print-inspection-form .app-shell, body.print-inspection-form > footer { display: none !important; }
   body.print-inspection-form #inspection-print-sheet { display: block !important; color: #14243a; background: #fff; font-family: "Malgun Gothic", "Noto Sans KR", sans-serif; font-size: 10pt; line-height: 1.4; }
   .worksheet-header { padding-bottom: 8mm; border-bottom: 2px solid #214a80; }
   .worksheet-header > p:first-child { margin: 0 0 3mm; color: #214a80; font-size: 8pt; font-weight: 800; letter-spacing: .08em; }
@@ -1418,3 +1418,39 @@ body { font-size: 17px; }
   body.listed-compact .risk-card > :not(.risk-bar) { grid-column: 2; }
 }
 @media print { body.listed-compact .analysis-loading { display: none !important; } }
+
+/* 보고서 03·04장 담당자 보완: 본문은 접어 두고 근거와 함께 수정한다. */
+#report-edit-panel[hidden] { display: none !important; }
+.report-edit-panel { margin: 0 0 14px; border: 1px solid #dce7f3; border-radius: 12px; background: #f8fbff; }
+.report-edit-panel > summary { display: flex; align-items: center; gap: 10px; padding: 13px 17px; color: #164879; font-size: 16px; font-weight: 800; cursor: pointer; }
+.report-edit-panel > summary::marker { color: #1765d1; }
+.report-edit-panel > summary span { margin-left: auto; color: #516f8d; font-size: 13px; font-weight: 600; }
+.report-edit-panel > p { margin: 0 17px 12px; color: #51647a; font-size: 14px; }
+.report-edit-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 0 17px 14px; }
+.report-edit-card { display: grid; align-content: start; gap: 7px; padding: 14px; border: 1px solid #e2eaf4; border-radius: 10px; background: #fff; }
+.report-edit-card h3 { margin: 0 0 3px; color: #172d48; font-size: 17px; }
+.report-edit-card label { color: #3f5875; font-size: 13px; font-weight: 750; }
+.report-edit-card input, .report-edit-card textarea { width: 100%; padding: 10px 12px; border: 1px solid #cbd9e9; border-radius: 8px; color: #173149; background: #fff; font-size: 15px; line-height: 1.5; }
+.report-edit-card textarea { min-height: 86px; resize: vertical; }
+.report-edit-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 0 17px 16px; }
+.report-edit-actions #report-edit-status { color: #365873; font-size: 14px; }
+.report-edit-actions #report-edit-status.error { color: #bc3546; }
+body.listed-compact #report-sheet.full-report-preview { width: 100%; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; line-height: normal; }
+.credit-full-report small { line-height: inherit; }
+.credit-full-report table { font-family: inherit; }
+@media (max-width: 760px) { .report-edit-grid { grid-template-columns: 1fr; } }
+@media print { .report-edit-panel { display: none !important; } }
+
+/* Keep the full report on plain paper when printed from the listed workflow. */
+@media print {
+  body.listed-compact { background: #fff !important; }
+  body.listed-compact #report.full-report-mode {
+    width: 100%;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+}

@@ -54,10 +54,12 @@ test("비상장 실제 분석 응답이 고객자료 출처·세 현금흐름·�
   assert.equal(model.records.at(-1).operatingCashFlow, 8 * 100_000_000);
   assert.equal(model.records.at(-1).investingCashFlow, -25 * 100_000_000);
   assert.equal(model.records.at(-1).financingCashFlow, 14 * 100_000_000);
-  assert.equal(model.sections.summary.bullets.some((line) => line.includes("1/") && line.includes("현장 근거 기록")), true);
+  assert.equal(model.sections.summary.bullets.some((line) => /현장실사 1\/\d+건 기록 완료/.test(line)), true);
   assert.match(model.loanReviews.working.status, /현장 우려·자료요청/);
-  assert.match(model.sections.business.bullets[0], /담당자 입력 출처: 가상 사업설명 p\.3/);
-  assert.match(model.sections.management.text, /PDF 원문 자동검증 결과가 아닙니다/);
+  assert.match(model.sections.business.bullets[0], /근거 가상 사업설명 p\.3/);
+  assert.match([model.sections.management.text, ...model.sections.management.bullets].join(" "), /적정.*2026-03-20.*가상 감사보고서 p\.1/);
+  assert.doesNotMatch(model.sections.management.text, /PDF 원문 자동검증 결과가 아닙니다/);
+  assert.doesNotMatch(model.sections.industry.text, /판단 근거로 확정하지 않습니다/);
   assert.equal(model.sources.some((source) => source.name === "가상_감사보고서.pdf" && /해시 기록/.test(source.status)), true);
   assert.equal(model.scenarios.length, 1);
   assert.equal(model.inspections[0].question, first.question);
@@ -69,13 +71,36 @@ test("비상장 실제 분석 응답이 고객자료 출처·세 현금흐름·�
   assert.doesNotMatch(report, /승인 완료|대출 승인 확정/);
 });
 
+test("비상장 보고서의 산업·경영진 보완 의견도 출처가 있을 때만 채택하고 HTML을 이스케이프한다", async () => {
+  const analysis = await manualAnalysis();
+  const baseline = buildPrivateReportModel(analysis);
+  const incomplete = buildPrivateReportModel(analysis, {
+    reportEdits: { management: { text: "출처 없는 경영진 평가", source: "" } },
+  });
+  assert.equal(incomplete.sections.management.text, baseline.sections.management.text);
+
+  const edited = buildPrivateReportModel(analysis, {
+    reportEdits: {
+      industry: { text: "수주 물량 감소로 가동률 저하", source: "고객 수주대장 3쪽" },
+      management: { text: '<script>alert(1)</script> 경영진이 대체 고객 확보 계획 제시', source: "면담록 2쪽" },
+    },
+  });
+  const html = renderFullReport(edited);
+  assert.match(html, /수주 물량 감소로 가동률 저하/);
+  assert.match(html, /고객 수주대장 3쪽/);
+  assert.match(html, /경영진이 대체 고객 확보 계획 제시/);
+  assert.match(html, /면담록 2쪽/);
+  assert.doesNotMatch(html, /<script>alert\(1\)<\/script>/);
+  assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
+});
+
 test("연결자료만 들어오면 차주 직접 상환능력과 조건 제안을 보류한다", async () => {
   const analysis = await manualAnalysis("CFS");
   const model = buildPrivateReportModel(analysis);
   assert.equal(analysis.manualReview.issues.some((issue) => issue.id === "borrower-separate" && issue.severity === "blocking"), true);
-  assert.match(model.verificationStatus, /재무판단 보류/);
+  assert.match(model.verificationStatus, /판단 보류/);
   assert.match(model.loanReviews.working.status, /입력 오류 해소 전/);
-  assert.match(model.sections.opinion.text, /수치 기반 결론을 보류/);
+  assert.match(model.sections.opinion.text, /수치 판단 보류/);
   assert.equal(model.openItems.some((item) => item.title === "차주 법인 별도재무제표 확보"), true);
 });
 
@@ -84,5 +109,5 @@ test("감사보고서가 없다고 입력한 경우 존재하지 않는 감사 �
   analysis.manualReview.auditReview = { opinion: "감사보고서 없음", reportDate: "", sourcePage: "" };
   const model = buildPrivateReportModel(analysis);
   assert.equal(model.sources.some((source) => source.scope === "감사의견"), false);
-  assert.match(model.sections.management.text, /감사보고서 없음/);
+  assert.match([model.sections.management.text, ...model.sections.management.bullets].join(" "), /감사보고서 없음/);
 });

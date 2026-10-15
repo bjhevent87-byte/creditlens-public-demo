@@ -63,6 +63,16 @@ test("반기 누적은 전년 동기와 비교하고 연간 보고서와 섞지 
   assert.ok(html.indexOf("2025</th>") < html.indexOf("2024</th>"), "annual latest must be first");
 });
 
+test("최신 반기를 앞세운 보고서 도입은 핵심 범위·비교기간·연간 추세만 세 줄로 쓴다", () => {
+  const html = renderFullReport({ ...sample, focusInterim: true });
+  const lead = html.match(/<div class="cr-lead-points">([\s\S]*?)<\/div>/)?.[1] || "";
+  assert.equal((lead.match(/<p\b/g) || []).length, 3);
+  assert.match(lead, /가상기업 에이비정밀.*별도 · 차주 법인.*2026-10-15.*기준으로 검토/);
+  assert.match(lead, /2026 반기.*누적 실적.*전년 동기/);
+  assert.match(lead, /최근 연간 추세는 6장에서 별도로 제시/);
+  assert.doesNotMatch(lead, /원본 확인 상태에 따라|수치 해석과 의견은 달라질 수/);
+});
+
 test("중간재무에 있는 투자·재무현금과 기말 재무상태도 같은 기간끼리 표시한다", () => {
   const html = renderFullReport({
     ...sample,
@@ -153,9 +163,10 @@ test("이자비용 대체값은 금융비용 배율이라고 표기하지 않는
 
 test("금융비용 배율 옆에는 미산정 상환위험을 명시한다", () => {
   const html = renderFullReport(sample);
-  assert.match(html, /이 배율만으로 상환능력을 판단할 수 없습니다/);
-  assert.match(html, /순수 이자비용 기준 이자보상배율은 별도로 산정하지 않았습니다/);
-  assert.match(html, /1년 내 원리금 만기액, 담보·보증, 관계회사 지원·우발채무도 아직 확정되지 않았습니다/);
+  const gate = html.match(/<div class="cr-risk-gate">([\s\S]*?)<\/div>/)?.[1] || "";
+  assert.match(gate, /원금 만기·상환재원 별도 확인/);
+  assert.match(gate, /금융비용 전체 기준.*순수 이자비용.*이자보상배율과 구분/);
+  assert.match(gate, /차입 만기·담보·보증 주석 대조/);
 });
 
 test("실제 가상 CSV 기반 비상장 모델도 상장 모델과 같은 12개 장을 쓴다", async () => {
@@ -217,6 +228,14 @@ test("저장용 HTML은 CSS를 내장하며 원본 보고서를 재사용한다"
   assert.match(html, /<style>\.credit-full-report\{color:#123f36\}<\/style>/);
   assert.match(html, /가상기업 에이비정밀/);
   assert.doesNotMatch(html, /href="\/final-report\.css"/);
+});
+
+test("저장 문서는 화면의 보고서 HTML을 그대로 사용한다", async () => {
+  const preview = renderFullReport(sample);
+  const saved = await renderFullReportDocument(sample, ".credit-full-report{color:#123f36}", preview);
+  const savedBody = saved.match(/<body>([\s\S]*?)<\/body>/)?.[1];
+  assert.equal(savedBody, preview);
+  assert.match(savedBody, /현장사진\.jpg/);
 });
 
 test("스타일시트 수신 실패 시에도 오프라인 인쇄용 기본 CSS를 포함한다", async () => {

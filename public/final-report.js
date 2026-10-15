@@ -24,6 +24,13 @@ export function renderFullReport(model = {}) {
     : /교육용|가상/.test(sourceLabel) ? "교육용 연간 재무자료" : "최근 연간 공시자료";
   const basisDate = text(model.basisDate, "기준일 확인 필요");
   const focusInterim = model.focusInterim && model.interim;
+  const leadLines = [
+    `${reportName}의 ${basisLabel} 자료를 ${basisDate} 기준으로 검토`,
+    focusInterim
+      ? `핵심 수치는 ${text(model.interim.period)} 누적 실적이며 전년 동기와 비교`
+      : `핵심 수치는 ${annualSourceLabel} 기준`,
+    focusInterim ? "최근 연간 추세는 6장에서 별도로 제시" : null,
+  ].filter(Boolean);
   const summaryFacts = focusInterim ? [
     ["최근 중간 누적 매출", model.interim.revenue, model.interim.period, false],
     ["최근 중간 누적 영업이익", model.interim.operatingProfit, model.interim.period, false],
@@ -53,24 +60,23 @@ export function renderFullReport(model = {}) {
       <div class="cr-brand"><span class="cr-brand-mark">CL</span><span>CreditLens <small>기업여신 의사결정 지원</small></span></div>
       <p class="cr-kicker">CORPORATE CREDIT ANALYSIS · REPORT DRAFT</p>
       <h1>${esc(reportName)}<br><span>기업분석 및 여신검토 보고서</span></h1>
-      <p class="cr-deck">차주 상환능력, 사업·산업 위험, 현장실사 결과와 미해결 과제를 한 문서에서 대조합니다.</p>
+      <p class="cr-deck">차주 상환능력 · 사업·산업 · 현장실사 · 요청여신 검토</p>
       <dl class="cr-cover-meta">
         <div><dt>분석 기준일</dt><dd>${esc(basisDate)}</dd></div>
         <div><dt>재무제표 범위</dt><dd>${esc(basisLabel)}</dd></div>
         <div><dt>자료 유형</dt><dd>${esc(sourceLabel)}</dd></div>
         <div><dt>원본 대조 상태</dt><dd>${esc(text(model.verificationStatus, "확인 필요"))}</dd></div>
       </dl>
-      <p class="cr-cover-warning">본 보고서는 제출·공개자료 기반의 검토 초안입니다. 신용승인, 한도, 금리, 담보조건을 자동 확정하지 않습니다.</p>
+      <p class="cr-cover-warning">검토 초안 · 신용승인과 여신조건 확정 전</p>
     </header>
 
     <nav class="cr-toc" aria-label="보고서 목차"><h2>목차</h2><ol>${toc.map(([number, label]) => `<li><span>${number}</span><span>${label}</span></li>`).join("")}</ol></nav>
 
     ${reportSection("01", toc[0][1], `
-      <p class="cr-lead">${esc(reportName)}의 ${esc(basisLabel)} 자료를 ${esc(basisDate)} 기준으로 검토했습니다. ${focusInterim ? `핵심 수치는 ${esc(text(model.interim.period))} 누적 실적이며 전년 동기와 비교합니다. 최근 연간 추세는 6장에서 별도로 제시합니다.` : `핵심 수치는 ${esc(annualSourceLabel)}를 기준으로 합니다.`} 원본 확인 상태에 따라 수치 해석과 의견은 달라질 수 있습니다.</p>
+      <div class="cr-lead-points">${leadLines.map((line, index) => `<p${index === 0 ? ' class="cr-lead"' : ""}>${esc(line)}</p>`).join("")}</div>
       <div class="cr-stat-grid">${summaryFacts.map(([label, value, period, signed]) => `<div class="cr-stat"><span>${esc(label)}</span><strong>${signed ? money(value) : unsignedMoney(value)}</strong><small>${esc(text(period, "기간 확인 필요"))} · 금액 단위 억원</small></div>`).join("")}</div>
       ${renderNarrative(sections.summary, "핵심 판단은 담당자의 원본 대조와 현장 확인 후 작성해야 합니다.")}
       ${renderRequest(asObject(model.loanRequest))}
-      <p class="cr-note">연간 실적과 반기·분기 누적실적을 합산하거나 직접 증감률로 비교하지 않습니다. 결측값은 0으로 대체하지 않습니다.</p>
     `)}
 
     ${reportSection("02", toc[1][1], `
@@ -102,7 +108,7 @@ export function renderFullReport(model = {}) {
       ${renderFinancialTable(records, annualSourceLabel)}
       <h3>영업·투자·재무활동 현금흐름</h3>
       ${renderCashFlowTable(records)}
-      <p class="cr-note">현금흐름의 부호만으로 좋고 나쁨을 확정하지 않습니다. 투자활동 유출은 설비투자·인수 등, 재무활동 유출은 차입상환·배당 등 서로 다른 원인일 수 있으므로 주석·원문에서 내역을 확인해야 합니다.</p>
+      <p class="cr-note">투자·재무활동 현금흐름의 유출입 내역은 주석에서 확인합니다.</p>
     `)}
 
     ${reportSection("07", toc[6][1], `
@@ -123,7 +129,7 @@ export function renderFullReport(model = {}) {
 
     ${reportSection("10", toc[9][1], `
       ${renderOpinion(sections.opinion, model.opinion, inspections)}
-      <p class="cr-note">당초 우려 → 제출·현장 증빙 → 해소/미해소 → 요청여신별 조건 변경의 순서로 심사자가 재판단해야 합니다. 이 문서의 미확인 항목은 승인 근거가 아닙니다.</p>
+      <p class="cr-note">우려 → 증빙 → 재판단 → 조건 변경을 기록합니다.</p>
     `)}
 
     ${reportSection("11", toc[10][1], `
@@ -179,11 +185,15 @@ function renderNarrative(input, fallback) {
   const data = asObject(input);
   const parts = [];
   if (data.text) parts.push(`<p class="cr-narrative">${esc(data.text)}</p>`);
+  if (data.source) parts.push(`<p class="cr-source-note">담당자 입력 · 근거 ${esc(data.source)}</p>`);
   for (const label of ["facts", "bullets", "positive", "concerns", "questions"]) {
     const entries = asArray(data[label]).filter((item) => item !== null && item !== undefined && String(item).trim());
     if (!entries.length) continue;
     const title = ({ facts: "확인된 사실", bullets: "검토 내용", positive: "강점·기회", concerns: "우려·제약", questions: "검증 질문" })[label];
-    parts.push(`<div class="cr-narrative-list"><h3>${title}</h3><ul>${entries.map((item) => `<li>${esc(typeof item === "string" ? item : text(item.text || item.title, BLANK))}</li>`).join("")}</ul></div>`);
+    parts.push(`<div class="cr-narrative-list"><h3>${title}</h3><ul>${entries.map((item) => {
+      const entry = asObject(item);
+      return `<li>${esc(typeof item === "string" ? item : text(entry.text || entry.title, BLANK))}${entry.detail ? `<small>${esc(entry.detail)}</small>` : ""}</li>`;
+    }).join("")}</ul></div>`);
   }
   return parts.length ? parts.join("") : `<p class="cr-empty">${esc(fallback)}</p>`;
 }
@@ -216,7 +226,7 @@ function renderAnnualChange(latest, previous) {
     const rateText = rate === null ? "증감률 산정 불가" : `${rate > 0 ? "+" : ""}${ratio(rate, "%", 1)}`;
     const signed = label === "영업현금흐름";
     return `<div><span>${label}</span><strong>${signed ? money(current) : unsignedMoney(current)}</strong><small>전기 ${signed ? money(prior) : unsignedMoney(prior)} · ${rateText}</small></div>`;
-  }).join("")}</div><p class="cr-caption">전기 금액이 0 이하이면 증감률을 표시하지 않습니다. 영업현금흐름과 회계상 이익의 차이는 채권·재고·채무와 비현금 항목을 확인해야 원인을 설명할 수 있습니다.</p></div>`;
+  }).join("")}</div><p class="cr-caption">전기 금액이 0 이하이면 증감률 미표시 · 영업현금과 이익의 차이는 운전자본·비현금 항목 대조</p></div>`;
 }
 function financialCell(record, key, computed) {
   const value = amount(record[key]);
@@ -230,7 +240,7 @@ function renderFinancialTable(records, annualSourceLabel) {
     ["자산총계", "totalAssets"], ["부채총계", "totalLiabilities"], ["자본총계", "equity"],
     ["유동자산", "currentAssets"], ["유동부채", "currentLiabilities"],
   ];
-  return `<div class="cr-table-scroll"><table class="cr-table"><thead><tr><th scope="col">계정</th>${records.map((row) => `<th scope="col">${esc(yearLabel(row))}</th>`).join("")}</tr></thead><tbody>${metrics.map(([label, key]) => `<tr><th scope="row">${label}</th>${records.map((row) => `<td>${financialCell(row, key)}</td>`).join("")}</tr>`).join("")}</tbody></table></div><p class="cr-caption">가장 최근의 ${esc(annualSourceLabel)}를 왼쪽에 표시합니다. 금액 단위 억원, 반올림 표시. 원문 계정명·단위·별도/연결 범위는 출처와 대조하세요.</p>`;
+  return `<div class="cr-table-scroll"><table class="cr-table"><thead><tr><th scope="col">계정</th>${records.map((row) => `<th scope="col">${esc(yearLabel(row))}</th>`).join("")}</tr></thead><tbody>${metrics.map(([label, key]) => `<tr><th scope="row">${label}</th>${records.map((row) => `<td>${financialCell(row, key)}</td>`).join("")}</tr>`).join("")}</tbody></table></div><p class="cr-caption">가장 최근의 ${esc(annualSourceLabel)}를 왼쪽에 표시 · 금액 단위 억원</p>`;
 }
 function renderCashFlowTable(records) {
   if (!records.length) return `<p class="cr-empty">세 활동 현금흐름을 표시할 연간 자료가 없습니다.</p>`;
@@ -240,7 +250,7 @@ function renderCashFlowTable(records) {
     ["재무활동현금흐름", "financingCashFlow"],
     ["단순 FCF(영업현금 − 유형·무형자산 취득)", "freeCashFlow"],
   ];
-  return `<div class="cr-table-scroll"><table class="cr-table cr-cash-table"><thead><tr><th scope="col">현금흐름 항목</th>${records.map((row) => `<th scope="col">${esc(yearLabel(row))}</th>`).join("")}</tr></thead><tbody>${metrics.map(([label, key]) => `<tr><th scope="row">${label}</th>${records.map((row) => `<td>${money(row[key])}</td>`).join("")}</tr>`).join("")}</tbody></table></div><p class="cr-caption">단순 FCF의 사용 계정과 리스·배당 반영 여부를 확인해야 합니다. 영업·투자·재무활동 현금흐름의 합계와 실제 현금증감은 환율효과 등으로 다를 수 있습니다.</p>`;
+  return `<div class="cr-table-scroll"><table class="cr-table cr-cash-table"><thead><tr><th scope="col">현금흐름 항목</th>${records.map((row) => `<th scope="col">${esc(yearLabel(row))}</th>`).join("")}</tr></thead><tbody>${metrics.map(([label, key]) => `<tr><th scope="row">${label}</th>${records.map((row) => `<td>${money(row[key])}</td>`).join("")}</tr>`).join("")}</tbody></table></div><p class="cr-caption">단순 FCF = 영업현금 − 유형·무형자산 취득 · 현금증감 차이는 환율효과 등 대조</p>`;
 }
 function renderInterim(value) {
   const interim = asObject(value);
@@ -261,7 +271,7 @@ function renderInterim(value) {
     const signed = key === "operatingCashFlow" || key === "investingCashFlow" || key === "financingCashFlow";
     return `<tr><th scope="row">${label}</th><td>${signed ? money(current) : unsignedMoney(current)}</td><td>${signed ? money(previous) : unsignedMoney(previous)}</td><td>${comparison}</td></tr>`;
   }).join("");
-  return `<div class="cr-interim"><h3>최근 반기·분기 비교</h3><p class="cr-subtitle">${esc(priorPeriod)} → ${esc(currentPeriod)} · 동일 기간 누적액끼리 비교</p><div class="cr-table-scroll"><table class="cr-table"><thead><tr><th scope="col">계정</th><th scope="col">${esc(currentPeriod)}</th><th scope="col">${esc(priorPeriod)}</th><th scope="col">전년 동기 대비</th></tr></thead><tbody>${rows}</tbody></table></div>${renderInterimBalances(interim, currentPeriod, priorPeriod)}<p class="cr-caption">중간재무의 손익·현금흐름은 누적 실적이고, 재무상태표는 각 보고기간 말 잔액입니다. 연간 값과 합산하거나 연간 전기와 직접 비교하지 않습니다. 전년 동기 금액이 0 이하이면 증감률을 표시하지 않습니다.</p></div>`;
+  return `<div class="cr-interim"><h3>최근 반기·분기 비교</h3><p class="cr-subtitle">${esc(priorPeriod)} → ${esc(currentPeriod)} · 동일 기간 누적액끼리 비교</p><div class="cr-table-scroll"><table class="cr-table"><thead><tr><th scope="col">계정</th><th scope="col">${esc(currentPeriod)}</th><th scope="col">${esc(priorPeriod)}</th><th scope="col">전년 동기 대비</th></tr></thead><tbody>${rows}</tbody></table></div>${renderInterimBalances(interim, currentPeriod, priorPeriod)}<p class="cr-caption">손익·현금흐름은 누적액, 재무상태표는 각 보고기간 말 잔액 · 연간 실적과 합산하지 않음</p></div>`;
 }
 function renderInterimBalances(interim, currentPeriod, priorPeriod) {
   const fields = [
@@ -286,7 +296,8 @@ function renderFindings(value) {
   if (!findings.length) return "";
   return `<div class="cr-finding-grid">${findings.map((item) => {
     const finding = asObject(item);
-    return `<div class="cr-finding"><h3>${esc(text(finding.title))}</h3><p><b>관찰값</b> ${esc(text(finding.observed, "값·기간 확인 필요"))}</p><p><b>가능한 해석</b> ${esc(text(finding.interpretation, "원인 확인 필요"))}</p><p><b>확인자료</b> ${esc(text(finding.check, "담당자 확인 필요"))}</p></div>`;
+    const interpretation = text(finding.interpretation, "");
+    return `<div class="cr-finding"><h3>${esc(text(finding.title))}</h3><p><b>관찰값</b> ${esc(text(finding.observed, "값·기간 확인 필요"))}</p>${interpretation && !/원인 확인 전/.test(interpretation) ? `<p><b>해석</b> ${esc(interpretation)}</p>` : ""}<p><b>확인자료</b> ${esc(text(finding.check, "담당자 확인 필요"))}</p></div>`;
   }).join("")}</div>`;
 }
 function renderDebtAnalysis(latest) {
@@ -298,12 +309,12 @@ function renderDebtAnalysis(latest) {
     { name: "유동비율", numerator: latest.currentAssets, denominator: latest.currentLiabilities, factor: 100, unit: "%", formula: "유동자산 ÷ 유동부채 × 100" },
     { name: coverageName, numerator: latest.operatingProfit, denominator: latest.financeCosts, factor: 1, unit: "배", formula: `영업이익 ÷ ${costName}` },
   ];
-  return `<div class="cr-debt-head"><div><span>공시·제출 금융차입금</span><strong>${unsignedMoney(latest.totalDebt)}</strong><small>원금 만기·리스 포함 여부 확인 필요</small></div><div><span>${costName}</span><strong>${unsignedMoney(latest.financeCosts)}</strong><small>${interestProxy ? "금융비용 원계정 없음 · 대체 사용" : "순수 이자비용과 구분"}</small></div></div><div class="cr-ratio-grid">${metrics.map((metric) => {
+  return `<div class="cr-debt-head"><div><span>공시·제출 금융차입금</span><strong>${unsignedMoney(latest.totalDebt)}</strong><small>원금 만기·리스 별도 확인</small></div><div><span>${costName}</span><strong>${unsignedMoney(latest.financeCosts)}</strong><small>${interestProxy ? "금융비용 원계정 없음 · 대체 사용" : "순수 이자비용과 구분"}</small></div></div><div class="cr-ratio-grid">${metrics.map((metric) => {
     const derived = calculatedRatio(metric.numerator, metric.denominator, metric.factor);
     const difference = amount(latest[metric.name === "부채비율" ? "debtRatio" : metric.name === "유동비율" ? "currentRatio" : "financeCostCoverage"]);
     const mismatch = difference !== null && derived !== null && Math.abs(difference - derived) > (metric.unit === "배" ? 0.03 : 0.2);
     return `<div class="cr-ratio"><span>${metric.name}</span><strong>${ratio(derived, metric.unit, 2)}</strong><small>${metric.formula}</small><p>${unsignedMoney(metric.numerator)} ÷ ${unsignedMoney(metric.denominator)}${metric.factor === 100 ? " × 100" : ""}</p>${mismatch ? `<em>제공 비율과 재계산값 차이 확인 필요</em>` : ""}</div>`;
-  }).join("")}</div><div class="cr-risk-gate"><b>이 배율만으로 상환능력을 판단할 수 없습니다</b><p>${interestProxy ? "대체 입력 이자비용의 계정 정의와 주석 원문을 확인해야 합니다." : "위 배율은 금융비용 전체를 분모로 사용하며, 순수 이자비용 기준 이자보상배율은 별도로 산정하지 않았습니다."} 1년 내 원리금 만기액, 담보·보증, 관계회사 지원·우발채무도 아직 확정되지 않았습니다. 원문 주석과 차입명세를 대조한 뒤 만기별 상환재원을 검토하세요.</p></div><p class="cr-caption">지표는 제공된 원계정으로 단순 재계산한 값입니다. 재무제표 범위·기간과 비용 계정 정의를 원문에서 확인해야 합니다. ${interestProxy ? "이자비용을 대체 사용했으므로 포괄손익계산서 금융비용 기반 배율로 해석하지 않습니다." : "영업이익/금융비용은 주석상 이자비용만 사용한 이자보상배율과 다릅니다."}</p>`;
+  }).join("")}</div><div class="cr-risk-gate"><b>원금 만기·상환재원 별도 확인</b><p>${interestProxy ? "이자비용 대체값 · 계정 정의 대조" : "금융비용 전체 기준 · 순수 이자비용의 이자보상배율과 구분"} · 차입 만기·담보·보증 주석 대조</p></div>`;
 }
 function renderLoanReviews(value, request) {
   const reviews = asObject(value);
@@ -320,11 +331,11 @@ function renderLoanReviews(value, request) {
 }
 function renderScenarios(value, narrative) {
   const scenarios = asArray(value);
-  const introduction = renderNarrative(narrative, "시나리오를 입력하지 않았습니다. 원리금 상환가능액이나 적정 여신금액을 추정하지 않습니다.");
+  const introduction = renderNarrative(narrative, "민감도 미실행");
   if (!scenarios.length) return `<h3>민감도·스트레스 시나리오</h3>${introduction}`;
   return `<h3>민감도·스트레스 시나리오</h3>${introduction}<div class="cr-scenario-grid">${scenarios.map((item) => {
     const scenario = asObject(item);
-    return `<div class="cr-scenario"><h4>${esc(text(scenario.name, "시나리오"))}</h4><p><b>가정</b> ${esc(text(scenario.assumptions, "가정값 확인 필요"))}</p><p><b>계산 결과</b> ${esc(text(scenario.results, "계산값 입력 전"))}</p><p><b>해석</b> ${esc(text(scenario.interpretation, "미래 예측값이 아님"))}</p><small>${esc(text(scenario.limitations, "민감도는 승인한도·제시금리의 근거가 아닙니다."))}</small></div>`;
+    return `<div class="cr-scenario"><h4>${esc(text(scenario.name, "시나리오"))}</h4><p><b>가정</b> ${esc(text(scenario.assumptions, "가정값 확인 필요"))}</p><p><b>계산 결과</b> ${esc(text(scenario.results, "계산값 입력 전"))}</p>${scenario.limitations ? `<small>${esc(scenario.limitations)}</small>` : ""}</div>`;
   }).join("")}</div>`;
 }
 function inspectionComplete(raw) {
@@ -343,14 +354,14 @@ function inspectionDisplayStatus(raw) {
 }
 function renderOpinion(section, opinionInput, inspections) {
   const opinion = asObject(opinionInput);
-  const narrative = renderNarrative(section || opinion.summary, "현장실사·원본 대조·상환자료 확인 후 종합의견을 작성해야 합니다.");
+  const narrative = renderNarrative(section || opinion.summary, "종합의견 작성 전");
   const completed = inspections.filter(inspectionComplete).length;
-  return `<div class="cr-opinion-status"><b>현장실사 근거 기록</b><strong>${completed}/${inspections.length}건</strong><small>상태 선택만으로 확인 완료로 보지 않습니다.</small></div>${narrative}${opinion.working || opinion.facility ? `<div class="cr-opinion-columns"><p><b>운전자금 의견</b><br>${esc(text(opinion.working, "상환자료 확인 전"))}</p><p><b>시설자금 의견</b><br>${esc(text(opinion.facility, "투자·상환자료 확인 전"))}</p></div>` : ""}${opinion.conditions ? `<p><b>조건·후속관리:</b> ${esc(opinion.conditions)}</p>` : ""}`;
+  return `<div class="cr-opinion-status"><b>현장실사 근거 기록</b><strong>${completed}/${inspections.length}건</strong></div>${narrative}${opinion.working || opinion.facility ? `<div class="cr-opinion-columns"><p><b>운전자금 의견</b><br>${esc(text(opinion.working, "상환자료 확인 전"))}</p><p><b>시설자금 의견</b><br>${esc(text(opinion.facility, "투자·상환자료 확인 전"))}</p></div>` : ""}${opinion.conditions ? `<p><b>조건·후속관리</b> ${esc(opinion.conditions)}</p>` : ""}`;
 }
 function renderInspectionSummary(items) {
   const completed = items.filter(inspectionComplete).length;
   const concerns = items.filter((item) => /우려|이상|자료\s*요청/.test(String(item?.selectedStatus || item?.status || ""))).length;
-  return `<div class="cr-inspection-summary"><div><span>점검 항목</span><strong>${items.length}건</strong></div><div><span>관찰·근거·후속조치 기록</span><strong>${completed}건</strong></div><div><span>우려·자료 요청</span><strong>${concerns}건</strong></div></div><p class="cr-caption">기록한 항목은 아래에 관찰·근거·후속조치를 표시합니다. 첨부파일의 내용은 자동 검증되지 않았습니다.</p>`;
+  return `<div class="cr-inspection-summary"><div><span>점검 항목</span><strong>${items.length}건</strong></div><div><span>관찰·근거·후속조치 기록</span><strong>${completed}건</strong></div><div><span>우려·자료 요청</span><strong>${concerns}건</strong></div></div>`;
 }
 function inspectionUntouched(raw) {
   const item = asObject(raw);
@@ -430,20 +441,20 @@ function renderDefinitions(value, latest) {
 }
 function renderLimitations(value, sourceLabel) {
   const defaults = [
-    "공시·제출자료의 자동 수신 또는 파일 첨부는 원본의 정확성·완전성 검증을 의미하지 않습니다. 계정 정의, 비교기간, 별도/연결 범위와 주석을 담당자가 확인해야 합니다.",
-    "차입별 만기·금리, 담보·보증, 고객의 월별 현금수지 및 실제 금융조건이 없으면 요청금액의 적정성과 상환구조를 확정할 수 없습니다.",
-    "현장실사 결과와 시나리오는 심사의 판단자료일 뿐, 승인·거절이나 한도·담보금액을 자동 결정하지 않습니다.",
+    "원계정·기간·재무범위·주석은 원본 대조 필요",
+    "월별 현금수지·기존 원리금 전에는 적정금액·상환구조 미산정",
+    "현장기록·민감도는 승인·거절 또는 담보금액 자동 결정 근거가 아님",
   ];
   const extra = asArray(value).filter(Boolean).map((item) => String(item));
-  return `<p class="cr-caption">자료 유형: ${esc(sourceLabel)}. 사용한 출처와 확인 시점은 위 표를 참조하세요.</p><ul class="cr-limit-list">${[...defaults, ...extra].map((item) => `<li>${esc(item)}</li>`).join("")}</ul>`;
+  return `<p class="cr-caption">자료 유형: ${esc(sourceLabel)}</p><ul class="cr-limit-list">${[...defaults, ...extra].map((item) => `<li>${esc(item)}</li>`).join("")}</ul>`;
 }
 
 /**
  * 저장·별도 인쇄용 독립 HTML 문서. 공통 CSS를 받아 문서 안에 내장하므로
  * 내려받은 파일도 오프라인에서 동일하게 인쇄할 수 있다.
- * 두 번째 인수로 이미 읽은 CSS 문자열을 전달할 수도 있다.
+ * 두 번째 인수는 읽어 둔 CSS, 세 번째 인수는 화면에 표시한 보고서 HTML이다.
  */
-export async function renderFullReportDocument(model = {}, stylesheet = "") {
+export async function renderFullReportDocument(model = {}, stylesheet = "", bodyMarkup = null) {
   const title = `${text(model.company?.name, "기업")}_기업분석보고서`;
   const fallbackCss = `*{box-sizing:border-box}body{margin:0;background:#fff;color:#17283e;font-family:Arial,"Malgun Gothic",sans-serif}.credit-full-report{max-width:1000px;margin:auto;padding:32px;line-height:1.6;font-size:15px}.cr-cover{border-top:8px solid #1769e0;padding:40px 0}.cr-brand{font-weight:800}.cr-cover h1{font-size:32px}.cr-section{margin:36px 0;break-inside:auto}.cr-section-heading{border-bottom:2px solid #1769e0;margin-bottom:15px}.cr-section-heading h2{display:inline-block;font-size:22px}.cr-table{width:100%;border-collapse:collapse}.cr-table th,.cr-table td{padding:8px;border-bottom:1px solid #dce4ef;text-align:left}.cr-table thead{background:#eef5ff}.cr-inspection-item{border:1px solid #dce4ef;padding:15px;margin:10px 0;break-inside:avoid}@page{size:A4;margin:15mm}@media print{.credit-full-report{max-width:none;padding:0}.cr-section-heading{break-after:avoid}.cr-table thead{display:table-header-group}.cr-table tr{break-inside:avoid}}`;
   let embeddedCss = stylesheet;
@@ -457,5 +468,6 @@ export async function renderFullReportDocument(model = {}, stylesheet = "") {
     }
   }
   const style = String(embeddedCss).replace(/<\/style/gi, "<\\/style");
-  return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>${style}</style></head><body>${renderFullReport(model)}</body></html>`;
+  const reportBody = typeof bodyMarkup === "string" && bodyMarkup.trim() ? bodyMarkup : renderFullReport(model);
+  return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>${style}</style></head><body>${reportBody}</body></html>`;
 }

@@ -8,6 +8,8 @@ let sourceCaseKey = "";
 let reviewCorrections = [];
 let inspectionAnswers = {};
 let inspectionSummary = "";
+let reportEdits = {};
+let reportEditDirty = false;
 const inspectionEvidence = new Map();
 const inspectionFileVersions = new Map();
 let manualScenarioResult = null;
@@ -541,6 +543,7 @@ function currentPrivateReportModel() {
     pdfFiles: pdfEvidence.map((file) => ({ name: file.name, sha256: file.sha256 })),
     inspections,
     inspectionSummary,
+    reportEdits,
     scenario: manualScenarioResult ? {
       name: "고객 제출 연간 재무 · 매출·영업이익 단순 민감도",
       assumptions: `매출 ${Number(manualScenarioResult.assumptions?.salesShockPct) > 0 ? "+" : ""}${manualScenarioResult.assumptions?.salesShockPct ?? 0}%, 영업이익률 ${Number(manualScenarioResult.assumptions?.marginShockPp) > 0 ? "+" : ""}${manualScenarioResult.assumptions?.marginShockPp ?? 0}%p`,
@@ -551,10 +554,69 @@ function currentPrivateReportModel() {
   });
 }
 
-function renderManualFinalReport() {
+function renderManualFinalReport(model = currentPrivateReportModel()) {
   if (!currentAnalysis) return;
-  $("#manual-final-report").innerHTML = renderFullReport(currentPrivateReportModel());
+  $("#manual-final-report").innerHTML = renderFullReport(model);
 }
+
+const reportEditKeys = ["industry", "management"];
+function clearReportEditInputs() {
+  for (const key of reportEditKeys) {
+    $(`#manual-report-${key}-text`).value = "";
+    $(`#manual-report-${key}-source`).value = "";
+  }
+}
+
+document.querySelectorAll("#manual-report-editor textarea, #manual-report-editor input").forEach((input) => {
+  input.addEventListener("input", () => {
+    reportEditDirty = true;
+    $("#manual-report-edit-status").textContent = "변경 내용을 보고서에 반영하려면 버튼을 누르세요.";
+  });
+});
+
+function applyManualReportEdits() {
+  if (!currentAnalysis) {
+    $("#manual-report-edit-status").textContent = "먼저 제출 재무자료를 분석해 주세요.";
+    return false;
+  }
+  const next = {};
+  for (const key of reportEditKeys) {
+    const narrative = $(`#manual-report-${key}-text`);
+    const source = $(`#manual-report-${key}-source`);
+    const text = narrative.value.trim();
+    const sourceText = source.value.trim();
+    if (text && !sourceText) {
+      $("#manual-report-edit-status").textContent = "보고서 문구를 쓰면 근거·페이지도 입력해 주세요.";
+      $("#manual-report-editor").open = true;
+      source.focus();
+      return false;
+    }
+    if (sourceText && !text) {
+      $("#manual-report-edit-status").textContent = "근거를 쓰면 보고서 문구도 입력해 주세요.";
+      $("#manual-report-editor").open = true;
+      narrative.focus();
+      return false;
+    }
+    if (text) next[key] = { text, source: sourceText };
+  }
+  reportEdits = next;
+  reportEditDirty = false;
+  renderManualFinalReport();
+  $("#manual-report-edit-status").textContent = Object.keys(next).length
+    ? `${Object.keys(next).length}개 장에 담당자 작성 내용과 근거를 반영했습니다.`
+    : "담당자 보완 내용을 지웠습니다.";
+  return true;
+}
+
+$("#manual-apply-report-edits").addEventListener("click", applyManualReportEdits);
+
+$("#manual-clear-report-edits").addEventListener("click", () => {
+  clearReportEditInputs();
+  reportEdits = {};
+  reportEditDirty = false;
+  renderManualFinalReport();
+  $("#manual-report-edit-status").textContent = "담당자 보완 내용을 지웠습니다.";
+});
 
 async function performAnalysis() {
   manualScenarioRequestId += 1;
@@ -564,6 +626,10 @@ async function performAnalysis() {
   const caseKey = JSON.stringify([csvText, $("#manual-name").value.trim(), $("#manual-industry").value.trim(), $("#manual-basis").value]);
   if (sourceCaseKey && sourceCaseKey !== caseKey) {
     reviewCorrections = []; inspectionAnswers = {}; inspectionSummary = "";
+    reportEdits = {};
+    reportEditDirty = false;
+    clearReportEditInputs();
+    $("#manual-report-edit-status").textContent = "새 기업 분석으로 보완 내용을 초기화했습니다.";
     for (const files of inspectionEvidence.values()) files.forEach((file) => URL.revokeObjectURL(file.url));
     inspectionEvidence.clear();
   }
@@ -602,17 +668,24 @@ $("#manual-form").addEventListener("submit", async (event) => {
 $("#manual-print").addEventListener("click", () => {
   if (!currentAnalysis) return;
   showManualPage("opinion");
-  renderManualFinalReport();
+  if (reportEditDirty && !applyManualReportEdits()) return;
+  renderManualFinalReport(currentPrivateReportModel());
   window.print();
 });
 
 $("#manual-save-report").addEventListener("click", async () => {
   if (!currentAnalysis) return;
+  if (reportEditDirty && !applyManualReportEdits()) return;
   const button = $("#manual-save-report");
   button.disabled = true;
   try {
     const model = currentPrivateReportModel();
-    const html = await renderFullReportDocument(model);
+    renderManualFinalReport(model);
+    const stylesheetResponse = await fetch(new URL("./final-report.css", import.meta.url));
+    if (!stylesheetResponse.ok) throw new Error(`보고서 서식을 읽지 못했습니다 (${stylesheetResponse.status}).`);
+    const stylesheet = await stylesheetResponse.text();
+    if (!stylesheet.trim()) throw new Error("보고서 서식이 비어 있습니다.");
+    const html = await renderFullReportDocument(model, stylesheet, $("#manual-final-report").innerHTML);
     const blob = new Blob([html], { type: "text/html;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
