@@ -54,6 +54,12 @@ test("비상장 실제 분석 응답이 고객자료 출처·세 현금흐름·�
   assert.equal(model.records.at(-1).operatingCashFlow, 8 * 100_000_000);
   assert.equal(model.records.at(-1).investingCashFlow, -25 * 100_000_000);
   assert.equal(model.records.at(-1).financingCashFlow, 14 * 100_000_000);
+  assert.equal(model.records.at(-1).totalCapex, 25 * 100_000_000);
+  assert.equal(model.records.at(-1).freeCashFlow, -17 * 100_000_000);
+  assert.equal(model.records.at(-1).cashFlowSubtotal, -3 * 100_000_000);
+  assert.equal(model.records.at(-1).cashBalanceChange, -3 * 100_000_000);
+  assert.equal(model.records.at(-1).cashFlowReconciliationGap, 0);
+  assert.equal(model.records.at(-1).debtBalanceChange, 20 * 100_000_000);
   assert.equal(model.sections.summary.bullets.some((line) => /현장실사 1\/\d+건 기록 완료/.test(line)), true);
   assert.match(model.loanReviews.working.status, /현장 우려·자료요청/);
   assert.match(model.sections.business.bullets[0], /근거 가상 사업설명 p\.3/);

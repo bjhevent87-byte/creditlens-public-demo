@@ -194,6 +194,26 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 .macro-card .macro-name, .macro-card p, .macro-card .delta { font-size: 14px; }
 .macro-card strong { color: #25384c; }
 .industry-guide, .inspection-context { border-color: #dfeafa; border-radius: 12px; background: #f4f9ff; }
+.industry-evidence-item { display: block; padding: 14px 44px 14px 17px; border-left: 4px solid #a5b3c3; }
+.industry-signal-adverse { border-left-color: #de4960; }
+.industry-signal-favorable { border-left-color: #11976c; }
+.industry-signal-caution { border-left-color: #bc8327; }
+.industry-signal-head { display: flex; align-items: center; flex-wrap: wrap; gap: 7px 12px; }
+.industry-signal-head > b { color: #1c3048; font-size: 16px; line-height: 1.4; }
+.industry-evidence-item .industry-signal-badge { display: inline-flex; flex: none; padding: 4px 9px; border-radius: 99px; color: #50667f; background: #eef2f7; font-size: 13px; font-weight: 800; }
+.industry-signal-adverse .industry-signal-badge { color: #ad2940; background: #fff0f2; }
+.industry-signal-favorable .industry-signal-badge { color: #08734f; background: #e8f7f0; }
+.industry-signal-caution .industry-signal-badge { color: #8a580d; background: #fff4df; }
+.industry-signal-values { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin: 9px 0 8px; }
+.industry-signal-values strong { color: #1c3048; font-size: 19px; text-align: left; font-variant-numeric: tabular-nums; }
+.industry-evidence-item .industry-signal-values span { color: #52677d; font-size: 15px; font-weight: 700; }
+.industry-evidence-item .industry-signal-headline { margin: 0; padding: 9px 12px; border-radius: 8px; color: #243b55; background: #f4f8fc; font-size: 16px; font-weight: 800; line-height: 1.5; }
+.industry-signal-adverse .industry-signal-headline { color: #8e2639; background: #fff4f5; }
+.industry-signal-favorable .industry-signal-headline { color: #08734f; background: #ecf9f3; }
+.industry-signal-meta { display: flex; flex-wrap: wrap; gap: 4px 13px; margin-top: 9px; }
+.industry-evidence-item .industry-signal-meta span { color: #5b6f84; font-size: 13px; }
+.industry-signal-meta a { color: #1765d1; font-size: 13px; font-weight: 750; text-decoration: underline; text-underline-offset: 2px; }
+.industry-evidence-item .industry-signal-detail { margin: 6px 0 0; color: #61758a; font-size: 13px; line-height: 1.4; }
 .interpretation { color: #43596f; background: #f6faff; font-size: 14px; }
 .loan-tabs button { border-color: #dce6f1; color: #566b81; background: #fff; }
 .loan-tabs button.active { color: #1765d1; border-color: #acd0fb; background: #e8f3ff; }

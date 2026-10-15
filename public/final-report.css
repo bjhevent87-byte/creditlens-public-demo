@@ -1,10 +1,10 @@
 .credit-full-report {
-  --cr-ink: #172b27;
-  --cr-muted: #596d66;
-  --cr-line: #dbe5de;
-  --cr-forest: #123f36;
-  --cr-lime: #d9ef66;
-  --cr-soft: #f5f8f5;
+  --cr-ink: #172943;
+  --cr-muted: #586b82;
+  --cr-line: #dce5ef;
+  --cr-forest: #183d68;
+  --cr-lime: #b9dcff;
+  --cr-soft: #f5f8fc;
   --cr-note: #fff8e9;
   box-sizing: border-box;
   width: min(100%, 1080px);
@@ -18,7 +18,7 @@
   font-size: 15px;
   line-height: 1.68;
   letter-spacing: -.018em;
-  box-shadow: 0 22px 56px rgba(19, 49, 42, .08);
+  box-shadow: 0 22px 56px rgba(22, 54, 95, .08);
 }
 
 .credit-full-report *, .credit-full-report *::before, .credit-full-report *::after { box-sizing: border-box; }
@@ -29,28 +29,28 @@
 .credit-full-report h4 { margin-bottom: 8px; font-size: 16px; }
 .credit-full-report p { margin-bottom: 13px; }
 .credit-full-report li + li { margin-top: 7px; }
-.credit-full-report a { color: #17645a; text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
+.credit-full-report a { color: #1768ba; text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
 .credit-full-report strong, .credit-full-report b { font-weight: 760; }
-.credit-full-report .cr-cover { position: relative; margin: -46px -56px 0; padding: 37px 56px 34px; border-radius: 18px 18px 0 0; color: #fff; background: linear-gradient(125deg, #0d332c, #194f41 70%, #185446); }
-.credit-full-report .cr-cover::after { content: ""; position: absolute; width: 164px; height: 164px; right: 50px; top: 48px; border: 1px solid rgba(217, 239, 102, .24); border-radius: 50%; pointer-events: none; }
-.credit-full-report .cr-brand { display: inline-flex; align-items: center; gap: 12px; color: #fff; font-size: 19px; font-weight: 850; line-height: 1.2; }
-.credit-full-report .cr-brand-mark { width: 40px; height: 40px; display: inline-grid; place-items: center; border-radius: 10px; color: var(--cr-forest); background: var(--cr-lime); font-size: 16px; font-weight: 900; }
-.credit-full-report .cr-brand small { display: block; margin-top: 3px; color: rgba(255,255,255,.68); font-size: 11px; font-weight: 500; }
-.credit-full-report .cr-kicker { margin: 46px 0 10px; color: var(--cr-lime); font-size: 11px; font-weight: 850; letter-spacing: .15em; }
-.credit-full-report .cr-cover h1 { position: relative; z-index: 1; max-width: 710px; margin: 0; color: #fff; font-size: clamp(31px, 4vw, 46px); font-weight: 760; line-height: 1.2; }
-.credit-full-report .cr-cover h1 span { color: var(--cr-lime); }
-.credit-full-report .cr-deck { max-width: 730px; margin: 17px 0 26px; color: rgba(255,255,255,.84); font-size: 15px; }
-.credit-full-report .cr-cover-meta { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin-bottom: 20px; overflow: hidden; border: 1px solid rgba(255,255,255,.22); border-radius: 10px; background: rgba(255,255,255,.22); }
-.credit-full-report .cr-cover-meta > div { min-width: 0; padding: 13px 15px; background: rgba(10, 48, 39, .84); }
-.credit-full-report .cr-cover-meta dt { color: rgba(255,255,255,.62); font-size: 11px; font-weight: 650; }
-.credit-full-report .cr-cover-meta dd { margin: 5px 0 0; color: #fff; font-size: 13px; font-weight: 750; overflow-wrap: anywhere; }
-.credit-full-report .cr-cover-warning { max-width: 800px; margin: 0; color: rgba(255,255,255,.76); font-size: 12px; }
+.credit-full-report .cr-cover { position: relative; margin: -46px -56px 0; padding: 31px 56px 28px; border-top: 7px solid var(--cr-forest); border-bottom: 1px solid var(--cr-line); border-radius: 18px 18px 0 0; color: var(--cr-ink); background: linear-gradient(180deg, #f5f9ff, #fff 76%); }
+.credit-full-report .cr-cover::after { display: none; }
+.credit-full-report .cr-brand { display: inline-flex; align-items: center; gap: 12px; color: var(--cr-ink); font-size: 19px; font-weight: 850; line-height: 1.2; }
+.credit-full-report .cr-brand-mark { width: 40px; height: 40px; display: inline-grid; place-items: center; border-radius: 10px; color: #fff; background: var(--cr-forest); font-size: 16px; font-weight: 900; }
+.credit-full-report .cr-brand small { display: block; margin-top: 3px; color: var(--cr-muted); font-size: 11px; font-weight: 500; }
+.credit-full-report .cr-kicker { margin: 29px 0 9px; color: #1768ba; font-size: 11px; font-weight: 850; letter-spacing: .15em; }
+.credit-full-report .cr-cover h1 { position: relative; z-index: 1; max-width: 710px; margin: 0; color: var(--cr-ink); font-size: clamp(31px, 4vw, 46px); font-weight: 760; line-height: 1.2; }
+.credit-full-report .cr-cover h1 span { color: #1768ba; }
+.credit-full-report .cr-deck { max-width: 730px; margin: 12px 0 22px; color: var(--cr-muted); font-size: 15px; }
+.credit-full-report .cr-cover-meta { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin-bottom: 16px; overflow: hidden; border: 1px solid var(--cr-line); border-radius: 10px; background: var(--cr-line); }
+.credit-full-report .cr-cover-meta > div { min-width: 0; padding: 12px 14px; background: #fff; }
+.credit-full-report .cr-cover-meta dt { color: var(--cr-muted); font-size: 11px; font-weight: 650; }
+.credit-full-report .cr-cover-meta dd { margin: 5px 0 0; color: var(--cr-ink); font-size: 13px; font-weight: 750; overflow-wrap: anywhere; }
+.credit-full-report .cr-cover-warning { max-width: 800px; margin: 0; color: var(--cr-muted); font-size: 12px; }
 
 .credit-full-report .cr-toc { padding: 27px 0 24px; border-bottom: 1px solid var(--cr-line); }
 .credit-full-report .cr-toc h2 { margin-bottom: 12px; color: var(--cr-forest); font-size: 19px; }
 .credit-full-report .cr-toc ol { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px 18px; padding: 0; list-style: none; }
-.credit-full-report .cr-toc li { display: flex; gap: 9px; margin: 0; padding: 5px 0; color: #364b43; font-size: 12px; }
-.credit-full-report .cr-toc li > span:first-child { color: #2b7360; font-weight: 850; font-variant-numeric: tabular-nums; }
+.credit-full-report .cr-toc li { display: flex; gap: 9px; margin: 0; padding: 5px 0; color: #40546f; font-size: 12px; }
+.credit-full-report .cr-toc li > span:first-child { color: #1768ba; font-weight: 850; font-variant-numeric: tabular-nums; }
 
 .credit-full-report .cr-section { margin: 0; padding: 31px 0 23px; border-bottom: 1px solid var(--cr-line); }
 .credit-full-report .cr-section:last-of-type { border-bottom: 0; }
@@ -62,13 +62,13 @@
 .credit-full-report .cr-lead-points p { margin: 0; color: var(--cr-ink); line-height: 1.45; }
 .credit-full-report .cr-lead-points .cr-lead { color: var(--cr-forest); font-weight: 750; }
 .credit-full-report .cr-narrative { white-space: pre-line; }
-.credit-full-report .cr-source-note { display: inline-block; margin: 0 0 12px; padding: 5px 10px; border-radius: 6px; color: #36584c; background: #edf5ee; font-size: 13px; font-weight: 650; }
+.credit-full-report .cr-source-note { display: inline-block; margin: 0 0 12px; padding: 5px 10px; border-radius: 6px; color: #28547e; background: #edf4fc; font-size: 13px; font-weight: 650; }
 .credit-full-report .cr-subtitle { margin: -3px 0 12px; color: var(--cr-muted); font-size: 13px; }
-.credit-full-report .cr-empty { margin: 0 0 14px; padding: 13px 15px; border-left: 4px solid #9aaea2; border-radius: 0 8px 8px 0; color: #41594f; background: var(--cr-soft); }
+.credit-full-report .cr-empty { margin: 0 0 14px; padding: 13px 15px; border-left: 4px solid #9baec2; border-radius: 0 8px 8px 0; color: #40566f; background: var(--cr-soft); }
 .credit-full-report .cr-caption { margin: 9px 0 18px; color: var(--cr-muted); font-size: 12px; line-height: 1.6; }
 .credit-full-report .cr-note { margin: 15px 0 0; padding: 12px 15px; border-left: 4px solid #c78b31; border-radius: 0 8px 8px 0; color: #6b4e23; background: var(--cr-note); font-size: 13px; }
-.credit-full-report .cr-tag { display: inline-block; padding: 4px 9px; border: 1px solid #d6e4db; border-radius: 99px; color: #4e655a; background: #f1f6f2; font-size: 11px; font-weight: 750; white-space: nowrap; }
-.credit-full-report .cr-tag-filled { color: #125d43; border-color: #b7decb; background: #e6f6ec; }
+.credit-full-report .cr-tag { display: inline-block; padding: 4px 9px; border: 1px solid #cfdef0; border-radius: 99px; color: #365b84; background: #f0f6fd; font-size: 11px; font-weight: 750; white-space: nowrap; }
+.credit-full-report .cr-tag-filled { color: #185ea3; border-color: #bbd9f6; background: #e9f3ff; }
 .credit-full-report .cr-narrative-list { margin: 16px 0; }
 .credit-full-report .cr-narrative-list h3 { font-size: 15px; }
 .credit-full-report .cr-narrative-list ul, .credit-full-report .cr-limit-list { padding-left: 22px; }
@@ -81,7 +81,7 @@
 .credit-full-report .cr-stat strong, .credit-full-report .cr-inspection-summary strong { display: block; margin-top: 4px; color: var(--cr-forest); font-size: 24px; line-height: 1.3; font-variant-numeric: tabular-nums; }
 .credit-full-report .cr-stat small { display: block; margin-top: 6px; color: var(--cr-muted); font-size: 11px; }
 .credit-full-report .cr-request-grid, .credit-full-report .cr-debt-head { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 16px 0; }
-.credit-full-report .cr-request-grid > div, .credit-full-report .cr-debt-head > div { display: flex; align-items: baseline; gap: 10px; padding: 13px 15px; border: 1px solid #cee0d6; border-radius: 10px; background: #f8fbf8; }
+.credit-full-report .cr-request-grid > div, .credit-full-report .cr-debt-head > div { display: flex; align-items: baseline; gap: 10px; padding: 13px 15px; border: 1px solid #d2e0ef; border-radius: 10px; background: #f8fbff; }
 .credit-full-report .cr-request-grid span, .credit-full-report .cr-debt-head span { color: var(--cr-muted); font-size: 12px; }
 .credit-full-report .cr-request-grid strong, .credit-full-report .cr-debt-head strong { color: var(--cr-forest); font-size: 20px; }
 .credit-full-report .cr-request-grid small, .credit-full-report .cr-debt-head small { margin-left: auto; color: var(--cr-muted); font-size: 11px; }
@@ -91,11 +91,11 @@
 .credit-full-report .cr-compact-callout { display: flex; gap: 12px; padding: 13px 15px; border-radius: 8px; background: var(--cr-soft); }
 .credit-full-report .cr-key-table { width: 100%; border-collapse: collapse; margin: 10px 0 16px; }
 .credit-full-report .cr-key-table th, .credit-full-report .cr-key-table td { padding: 9px 12px; border-bottom: 1px solid var(--cr-line); text-align: left; vertical-align: top; }
-.credit-full-report .cr-key-table th { width: 165px; color: var(--cr-muted); background: #f7f9f7; font-size: 13px; }
+.credit-full-report .cr-key-table th { width: 165px; color: var(--cr-muted); background: #f6f9fd; font-size: 13px; }
 
 .credit-full-report .cr-indicator-grid, .credit-full-report .cr-ratio-grid, .credit-full-report .cr-change-grid, .credit-full-report .cr-finding-grid, .credit-full-report .cr-scenario-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 15px 0; }
 .credit-full-report .cr-indicator, .credit-full-report .cr-ratio, .credit-full-report .cr-change-grid > div, .credit-full-report .cr-finding, .credit-full-report .cr-scenario { min-width: 0; padding: 14px 15px; border: 1px solid var(--cr-line); border-radius: 9px; background: #fff; }
-.credit-full-report .cr-indicator b, .credit-full-report .cr-ratio span, .credit-full-report .cr-change-grid span { display: block; color: #41594f; font-size: 12px; }
+.credit-full-report .cr-indicator b, .credit-full-report .cr-ratio span, .credit-full-report .cr-change-grid span { display: block; color: #40566f; font-size: 12px; }
 .credit-full-report .cr-indicator strong, .credit-full-report .cr-ratio strong, .credit-full-report .cr-change-grid strong { display: block; margin: 5px 0; color: var(--cr-forest); font-size: 20px; font-variant-numeric: tabular-nums; }
 .credit-full-report .cr-indicator small, .credit-full-report .cr-ratio small, .credit-full-report .cr-change-grid small { display: block; color: var(--cr-muted); font-size: 11px; }
 .credit-full-report .cr-indicator p, .credit-full-report .cr-ratio p { margin: 9px 0 0; font-size: 12px; }
@@ -104,7 +104,7 @@
 .credit-full-report .cr-finding p, .credit-full-report .cr-scenario p { margin: 7px 0; font-size: 12px; }
 .credit-full-report .cr-finding b, .credit-full-report .cr-scenario b { color: var(--cr-muted); }
 .credit-full-report .cr-scenario small { color: var(--cr-muted); }
-.credit-full-report .cr-interim { margin-bottom: 25px; padding: 17px 18px 12px; border: 1px solid #b5dcc9; border-radius: 10px; background: #f6fbf8; }
+.credit-full-report .cr-interim { margin-bottom: 25px; padding: 17px 18px 12px; border: 1px solid #c8ddf3; border-radius: 10px; background: #f5f9ff; }
 .credit-full-report .cr-interim h3 { color: var(--cr-forest); }
 .credit-full-report .cr-interim .cr-table { background: #fff; }
 
@@ -113,8 +113,8 @@
 .credit-full-report .cr-table th, .credit-full-report .cr-table td { padding: 9px 10px; border-bottom: 1px solid var(--cr-line); text-align: right; vertical-align: top; }
 .credit-full-report .cr-table th:first-child, .credit-full-report .cr-table td:first-child { text-align: left; }
 .credit-full-report .cr-table thead th { color: #fff; background: var(--cr-forest); font-weight: 750; }
-.credit-full-report .cr-table tbody th { color: #344d42; font-weight: 700; }
-.credit-full-report .cr-table tbody tr:nth-child(even) { background: #f7faf7; }
+.credit-full-report .cr-table tbody th { color: #36516e; font-weight: 700; }
+.credit-full-report .cr-table tbody tr:nth-child(even) { background: #f7faff; }
 .credit-full-report .cr-table tbody td { white-space: nowrap; }
 .credit-full-report .cr-source-table tbody td, .credit-full-report .cr-definition-table tbody td { text-align: left; white-space: normal; }
 .credit-full-report .cr-source-table small, .credit-full-report .cr-definition-table small { display: block; color: var(--cr-muted); font-size: 11px; }
@@ -122,7 +122,7 @@
 .credit-full-report .cr-definition-table td strong { display: block; margin-top: 5px; color: var(--cr-forest); }
 
 .credit-full-report .cr-loan-grid, .credit-full-report .cr-opinion-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 16px 0; }
-.credit-full-report .cr-loan-card { min-width: 0; padding: 17px; border: 1px solid var(--cr-line); border-radius: 10px; background: #fbfcfb; }
+.credit-full-report .cr-loan-card { min-width: 0; padding: 17px; border: 1px solid var(--cr-line); border-radius: 10px; background: #fbfcff; }
 .credit-full-report .cr-loan-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 14px; }
 .credit-full-report .cr-loan-card-head > div { min-width: 0; }
 .credit-full-report .cr-loan-card-head .cr-tag { flex: 0 1 auto; max-width: 58%; min-width: 0; white-space: normal; overflow-wrap: anywhere; text-align: right; }
@@ -133,28 +133,28 @@
 .credit-full-report .cr-opinion-status { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; padding: 14px; border-radius: 10px; color: #fff; background: var(--cr-forest); }
 .credit-full-report .cr-opinion-status strong { color: var(--cr-lime); font-size: 21px; }
 .credit-full-report .cr-opinion-status small { margin-left: auto; color: rgba(255,255,255,.72); }
-.credit-full-report .cr-opinion-columns p { margin: 0; padding: 14px; border: 1px solid var(--cr-line); border-radius: 9px; background: #f8faf8; }
+.credit-full-report .cr-opinion-columns p { margin: 0; padding: 14px; border: 1px solid var(--cr-line); border-radius: 9px; background: #f7faff; }
 
 .credit-full-report .cr-inspection-list { display: grid; grid-template-columns: 1fr; gap: 10px; }
 .credit-full-report .cr-inspection-item { padding: 16px 18px; border: 1px solid var(--cr-line); border-radius: 10px; background: #fff; }
 .credit-full-report .cr-inspection-item-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 7px; }
-.credit-full-report .cr-inspection-item-head > span:first-child { color: #2f6c54; font-size: 11px; font-weight: 800; letter-spacing: .02em; }
-.credit-full-report .cr-inspection-item h3 { margin-bottom: 10px; color: #1e3e32; font-size: 15px; }
+.credit-full-report .cr-inspection-item-head > span:first-child { color: #2869ae; font-size: 11px; font-weight: 800; letter-spacing: .02em; }
+.credit-full-report .cr-inspection-item h3 { margin-bottom: 10px; color: #1a3b62; font-size: 15px; }
 .credit-full-report .cr-inspection-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.credit-full-report .cr-inspection-fields > div { padding: 10px; border-radius: 7px; background: #f7f9f7; }
+.credit-full-report .cr-inspection-fields > div { padding: 10px; border-radius: 7px; background: #f6f9fd; }
 .credit-full-report .cr-inspection-fields b { display: block; color: var(--cr-muted); font-size: 11px; }
 .credit-full-report .cr-inspection-fields p { margin: 5px 0 0; font-size: 12px; white-space: pre-line; overflow-wrap: anywhere; }
 .credit-full-report .cr-file-meta { margin: 9px 0 0; color: var(--cr-muted); font-size: 11px; overflow-wrap: anywhere; }
-.credit-full-report .cr-inspection-pending { margin-top: 14px; padding: 14px 16px; border: 1px solid var(--cr-line); border-radius: 10px; background: #f8faf8; }
+.credit-full-report .cr-inspection-pending { margin-top: 14px; padding: 14px 16px; border: 1px solid var(--cr-line); border-radius: 10px; background: #f8fbff; }
 .credit-full-report .cr-inspection-pending h3 { margin: 0 0 9px; }
 .credit-full-report .cr-inspection-pending > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 12px; }
 .credit-full-report .cr-inspection-pending p { display: flex; gap: 7px; margin: 0; padding: 5px 0; border-bottom: 1px solid var(--cr-line); font-size: 11px; line-height: 1.4; }
-.credit-full-report .cr-inspection-pending p b { flex: 0 0 72px; color: #2f6c54; }
+.credit-full-report .cr-inspection-pending p b { flex: 0 0 72px; color: #2869ae; }
 .credit-full-report .cr-inspection-pending p span { min-width: 0; }
 .credit-full-report .cr-open-list { padding-left: 28px; counter-reset: review-item; }
 .credit-full-report .cr-open-list li { padding: 9px 12px; border-bottom: 1px solid var(--cr-line); }
-.credit-full-report .cr-open-list li::marker { color: #32795a; font-weight: 800; }
-.credit-full-report .cr-open-list p { margin: 3px 0; color: #50625a; font-size: 13px; }
+.credit-full-report .cr-open-list li::marker { color: #2869ae; font-weight: 800; }
+.credit-full-report .cr-open-list p { margin: 3px 0; color: #50627a; font-size: 13px; }
 .credit-full-report .cr-open-list small { color: var(--cr-muted); }
 .credit-full-report .cr-footer { display: flex; justify-content: space-between; gap: 20px; padding-top: 18px; border-top: 2px solid var(--cr-forest); color: var(--cr-muted); font-size: 11px; }
 
@@ -180,29 +180,29 @@
 
 @page { size: A4 portrait; margin: 15mm 14mm 16mm; }
 @media print {
-  .credit-full-report { width: 100%; max-width: none; min-width: 0; margin: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none; color: #172b27; background: #fff; font-size: 10.5pt; line-height: 1.55; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-  .credit-full-report .cr-cover { margin: 0 0 12mm; padding: 12mm 13mm 9mm; border-top: 2mm solid #123f36; border-radius: 0; color: #172b27; background: #fff; }
+  .credit-full-report { width: 100%; max-width: none; min-width: 0; margin: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none; color: #172943; background: #fff; font-size: 10.5pt; line-height: 1.55; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .credit-full-report .cr-cover { margin: 0 0 12mm; padding: 12mm 13mm 9mm; border-top: 2mm solid #183d68; border-radius: 0; color: #172943; background: #fff; }
   .credit-full-report .cr-cover::after { display: none; }
-  .credit-full-report .cr-brand, .credit-full-report .cr-cover h1, .credit-full-report .cr-cover-meta dd { color: #172b27; }
+  .credit-full-report .cr-brand, .credit-full-report .cr-cover h1, .credit-full-report .cr-cover-meta dd { color: #172943; }
   .credit-full-report .cr-cover h1 { font-size: 25pt; }
-  .credit-full-report .cr-brand-mark, .credit-full-report .cr-cover h1 span, .credit-full-report .cr-kicker { color: #17645a; background: transparent; }
-  .credit-full-report .cr-brand small, .credit-full-report .cr-deck, .credit-full-report .cr-cover-warning, .credit-full-report .cr-cover-meta dt { color: #596d66; }
+  .credit-full-report .cr-brand-mark, .credit-full-report .cr-cover h1 span, .credit-full-report .cr-kicker { color: #1768ba; background: transparent; }
+  .credit-full-report .cr-brand small, .credit-full-report .cr-deck, .credit-full-report .cr-cover-warning, .credit-full-report .cr-cover-meta dt { color: #586b82; }
   .credit-full-report .cr-kicker { margin-top: 18mm; }
-  .credit-full-report .cr-cover-meta { margin-bottom: 4mm; border-color: #cbd8d0; background: #cbd8d0; }
+  .credit-full-report .cr-cover-meta { margin-bottom: 4mm; border-color: #d8e4f1; background: #d8e4f1; }
   .credit-full-report .cr-cover-meta > div { padding: 3mm; background: #fff; }
   .credit-full-report .cr-toc { padding: 0 0 8mm; }
   .credit-full-report .cr-toc ol { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .credit-full-report .cr-toc + .cr-section { break-before: page; page-break-before: always; }
   .credit-full-report .cr-section { padding: 8mm 0 5mm; break-inside: auto; }
-  .credit-full-report .cr-section-heading { break-after: avoid-page; }
+  .credit-full-report .cr-section-heading { break-inside: avoid-page; page-break-inside: avoid; break-after: avoid-page; }
   .credit-full-report #cr-section-09 { break-before: page; page-break-before: always; }
-  .credit-full-report .cr-section-heading > span { color: #123f36; border: 1px solid #123f36; background: #fff; }
+  .credit-full-report .cr-section-heading > span { color: #183d68; border: 1px solid #183d68; background: #fff; }
   .credit-full-report .cr-section-heading h2 { font-size: 17pt; }
   .credit-full-report h3, .credit-full-report h4 { break-after: avoid-page; }
   .credit-full-report .cr-stat, .credit-full-report .cr-indicator, .credit-full-report .cr-ratio, .credit-full-report .cr-finding, .credit-full-report .cr-scenario, .credit-full-report .cr-loan-card, .credit-full-report .cr-inspection-item, .credit-full-report .cr-empty, .credit-full-report .cr-note, .credit-full-report .cr-open-list li, .credit-full-report .cr-narrative-list li { break-inside: avoid-page; }
   .credit-full-report #cr-section-07 .cr-narrative-list { break-inside: avoid-page; }
   .credit-full-report .cr-stat-grid, .credit-full-report .cr-indicator-grid, .credit-full-report .cr-ratio-grid, .credit-full-report .cr-change-grid, .credit-full-report .cr-finding-grid, .credit-full-report .cr-scenario-grid, .credit-full-report .cr-inspection-fields, .credit-full-report .cr-loan-grid { gap: 2.5mm; }
-  .credit-full-report #cr-section-08 > .cr-loan-grid ~ h3 { margin-top: 8mm; padding-top: 4mm; border-top: 1px solid #cbd8d0; }
+  .credit-full-report #cr-section-08 > .cr-loan-grid ~ h3 { margin-top: 8mm; padding-top: 4mm; border-top: 1px solid #d8e4f1; }
   .credit-full-report .cr-scenario-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .credit-full-report .cr-scenario-grid > :only-child { grid-column: 1 / -1; }
   .credit-full-report .cr-scenario, .credit-full-report .cr-scenario-grid, .credit-full-report .cr-inspection-list, .credit-full-report .cr-inspection-item, .credit-full-report .cr-inspection-fields, .credit-full-report .cr-inspection-fields > div { width: 100%; max-width: 100%; min-width: 0; }
@@ -215,11 +215,11 @@
   .credit-full-report .cr-table-scroll { overflow: visible; }
   .credit-full-report .cr-table { font-size: 9pt; }
   .credit-full-report .cr-table thead { display: table-header-group; }
-  .credit-full-report .cr-table thead th { color: #172b27; border-top: 1px solid #123f36; border-bottom: 2px solid #123f36; background: #fff; }
+  .credit-full-report .cr-table thead th { color: #172943; border-top: 1px solid #183d68; border-bottom: 2px solid #183d68; background: #fff; }
   .credit-full-report .cr-table tr, .credit-full-report .cr-key-table tr { break-inside: avoid-page; }
   .credit-full-report .cr-table th, .credit-full-report .cr-table td { padding: 2.1mm 2.5mm; }
-  .credit-full-report .cr-opinion-status { color: #172b27; border: 1px solid #123f36; background: #fff; }
-  .credit-full-report .cr-opinion-status strong, .credit-full-report .cr-opinion-status small { color: #172b27; }
+  .credit-full-report .cr-opinion-status { color: #172943; border: 1px solid #183d68; background: #fff; }
+  .credit-full-report .cr-opinion-status strong, .credit-full-report .cr-opinion-status small { color: #172943; }
   .credit-full-report a { color: inherit; text-decoration: none; }
   .credit-full-report .cr-footer { margin-top: 7mm; }
 }

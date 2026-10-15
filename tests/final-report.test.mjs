@@ -223,16 +223,16 @@ test("사용자 입력과 원자료 URL은 HTML 또는 스크립트로 실행되
 });
 
 test("저장용 HTML은 CSS를 내장하며 원본 보고서를 재사용한다", async () => {
-  const html = await renderFullReportDocument(sample, ".credit-full-report{color:#123f36}");
+  const html = await renderFullReportDocument(sample, ".credit-full-report{color:#183d68}");
   assert.match(html, /<!doctype html>/);
-  assert.match(html, /<style>\.credit-full-report\{color:#123f36\}<\/style>/);
+  assert.match(html, /<style>\.credit-full-report\{color:#183d68\}<\/style>/);
   assert.match(html, /가상기업 에이비정밀/);
   assert.doesNotMatch(html, /href="\/final-report\.css"/);
 });
 
 test("저장 문서는 화면의 보고서 HTML을 그대로 사용한다", async () => {
   const preview = renderFullReport(sample);
-  const saved = await renderFullReportDocument(sample, ".credit-full-report{color:#123f36}", preview);
+  const saved = await renderFullReportDocument(sample, ".credit-full-report{color:#183d68}", preview);
   const savedBody = saved.match(/<body>([\s\S]*?)<\/body>/)?.[1];
   assert.equal(savedBody, preview);
   assert.match(savedBody, /현장사진\.jpg/);
@@ -248,8 +248,9 @@ test("스타일시트 수신 실패 시에도 오프라인 인쇄용 기본 CSS�
 test("인쇄 배경색이 꺼져도 표지·표 머리글·의견 상태가 읽힌다", async () => {
   const css = await readFile(new URL("../public/final-report.css", import.meta.url), "utf8");
   assert.match(css, /@page\s*\{\s*size:\s*A4 portrait/);
-  assert.match(css, /\.credit-full-report \.cr-cover \{[^}]*color: #172b27; background: #fff;/);
-  assert.match(css, /\.credit-full-report \.cr-table thead th \{[^}]*color: #172b27;[^}]*background: #fff;/);
-  assert.match(css, /\.credit-full-report \.cr-opinion-status \{[^}]*color: #172b27;[^}]*background: #fff;/);
+  assert.match(css, /\.credit-full-report \.cr-cover \{[^}]*color: #172943; background: #fff;/);
+  assert.match(css, /\.credit-full-report \.cr-table thead th \{[^}]*color: #172943;[^}]*background: #fff;/);
+  assert.match(css, /\.credit-full-report \.cr-opinion-status \{[^}]*color: #172943;[^}]*background: #fff;/);
   assert.match(css, /\.credit-full-report \.cr-table thead \{ display: table-header-group; \}/);
+  assert.match(css, /\.credit-full-report \.cr-section-heading \{ break-inside: avoid-page; page-break-inside: avoid; break-after: avoid-page; \}/);
 });

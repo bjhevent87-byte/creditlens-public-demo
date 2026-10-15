@@ -1454,3 +1454,64 @@ body.listed-compact #report-sheet.full-report-preview { width: 100%; min-height:
     box-shadow: none !important;
   }
 }
+
+/* 현장실사: 점검 정보는 유지하되 반복 안내와 여백을 줄인다. */
+@media screen {
+  body.listed-compact #inspection .section-heading,
+  body.listed-compact #evidence-review .section-heading { margin-bottom: 10px; padding-bottom: 10px; }
+  body.listed-compact .inspection-context { margin-bottom: 7px; padding: 11px 14px; gap: 12px; }
+  body.listed-compact .inspection-context p { font-size: 14px; line-height: 1.4; }
+  body.listed-compact .inspection-context > div:first-child p + p { display: none; }
+  body.listed-compact .inspection-rules span { margin-top: 3px; }
+  body.listed-compact .inspection-file-guidance { margin: 0 0 9px; padding: 8px 12px; border-radius: 8px; color: #36516e; background: #f4f8fd; font-size: 14px; line-height: 1.45; }
+  body.listed-compact .inspection-file-guidance strong { color: #1558a7; }
+  body.listed-compact .inspection-demo-guidance { display: none; }
+  body.listed-compact.public-demo .inspection-demo-guidance { display: inline; }
+  body.listed-compact.public-demo .inspection-local-guidance { display: none; }
+  body.listed-compact .inspection-list { margin-top: 0; gap: 7px; }
+  body.listed-compact .inspection-item { padding: 11px 14px; }
+  body.listed-compact .inspection-item-head { grid-template-columns: 94px minmax(0, 1fr) 146px; gap: 10px; align-items: center; }
+  body.listed-compact .inspection-item-head .category { font-size: 15px; }
+  body.listed-compact .inspection-item-head .category small { margin-top: 2px; font-size: 12px; }
+  body.listed-compact .inspection-item-head h3 { margin: 0; font-size: 18px; line-height: 1.4; }
+  body.listed-compact .inspection-item-head p { margin: 2px 0 0; font-size: 15px; line-height: 1.4; }
+  body.listed-compact .inspection-item-head label,
+  body.listed-compact .inspection-detail-fields label { gap: 4px; font-size: 15px; }
+  body.listed-compact .inspection-item-head select { min-height: 38px; font-size: 16px; }
+  body.listed-compact .inspection-detail-fields { gap: 9px; margin-top: 9px; }
+  body.listed-compact .inspection-detail-fields textarea { min-height: 60px; padding: 7px 9px; font-size: 16px; line-height: 1.4; }
+  body.listed-compact .inspection-file-upload { gap: 6px; margin-top: 5px; }
+  body.listed-compact .inspection-file-upload button { min-height: 32px; padding: 5px 10px; font-size: 14px; }
+  body.listed-compact .inspection-file-upload > small { display: none; }
+  body.listed-compact .inspection-entry-state { margin-top: 5px; font-size: 13px; }
+  body.listed-compact .inspection-item:has(select[data-inspection] option[value="미확인"]:checked) .inspection-entry-state { display: none; }
+  body.listed-compact .inspection-notes { margin-top: 11px; }
+
+  body.listed-compact .evidence-review-list { gap: 8px; }
+  body.listed-compact .evidence-review-item { grid-template-columns: minmax(0, 1.5fr) 145px minmax(230px, 1fr); gap: 12px; padding: 12px 14px; }
+  body.listed-compact .evidence-review-item h3 { margin: 4px 0; font-size: 18px; line-height: 1.35; }
+  body.listed-compact .evidence-review-item p { color: #3d536b; font-size: 15px; line-height: 1.45; }
+  body.listed-compact .evidence-review-item small { margin-top: 5px; font-size: 13px; }
+  body.listed-compact .evidence-review-item label { gap: 5px; font-size: 15px; }
+  body.listed-compact .evidence-review-item select { min-height: 40px; padding: 7px 9px; font-size: 16px; }
+  body.listed-compact .evidence-review-item textarea { min-height: 62px; padding: 8px 10px; font-size: 16px; line-height: 1.4; }
+  body.listed-compact .review-outcome { gap: 8px; margin-top: 10px; }
+  body.listed-compact .review-outcome > div { padding: 11px 14px; }
+  body.listed-compact .review-outcome span,
+  body.listed-compact .review-outcome p { font-size: 14px; }
+  body.listed-compact .review-outcome strong { margin: 3px 0; font-size: 18px; }
+  body.listed-compact .review-outcome > p { display: none; }
+}
+@media screen and (max-width: 1100px) {
+  body.listed-compact .evidence-review-item { grid-template-columns: minmax(0, 1fr) 145px; }
+  body.listed-compact .evidence-review-item .wide { grid-column: 1 / -1; }
+}
+@media screen and (max-width: 760px) {
+  body.listed-compact .inspection-item-head,
+  body.listed-compact .inspection-detail-fields,
+  body.listed-compact .evidence-review-item { grid-template-columns: 1fr; }
+  body.listed-compact .inspection-item-head { gap: 7px; }
+  body.listed-compact .inspection-item-head .category { display: inline-flex; align-items: baseline; gap: 6px; }
+  body.listed-compact .inspection-item-head .category small { margin: 0; }
+  body.listed-compact .evidence-review-item .wide { grid-column: auto; }
+}

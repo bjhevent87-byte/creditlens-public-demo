@@ -278,6 +278,7 @@
         <section class="panel" id="inspection">
           <div class="section-heading"><div><p class="eyebrow">FIELD INSPECTION</p><h2>업종별 현장실사 기록</h2></div><div class="inspection-actions"><span class="count-badge" id="inspection-progress"></span><button class="secondary-button" id="print-inspection-form" type="button">빈 현장 점검지 인쇄·PDF</button></div></div>
           <div class="inspection-context" id="inspection-context"></div>
+          <p class="inspection-file-guidance"><strong>증빙 첨부</strong> · PDF·사진, 파일당 10MB 이하 · 자동 판독 없음<span class="inspection-demo-guidance"> · 이 탭에서만 임시 보관, 서버 저장 없음 · 실제 고객자료 금지</span><span class="inspection-local-guidance"> · 이 PC의 사건에 저장</span></p>
           <div class="utilization-box" id="utilization-box">
             <div><p class="eyebrow">SITE INPUT</p><h3>가동률 변화 입력</h3><p>현장 확인값을 분석 결과와 다시 연결합니다.</p></div>
             <label>이전 가동률<input id="previous-utilization" type="number" min="0" max="100" placeholder="현장 확인값" /><span>%</span></label>
@@ -289,7 +290,7 @@
         </section>
 
         <section class="panel" id="evidence-review">
-          <div class="section-heading"><div><p class="eyebrow">CONCERN → EVIDENCE → REASSESSMENT</p><h2>우려 항목과 증빙 검증</h2><p>파일 첨부만으로 우려가 해소되지는 않습니다. 담당자가 내용을 확인하고 판단 근거를 기록합니다.</p></div><span class="count-badge" id="review-progress">검증 전</span></div>
+          <div class="section-heading"><div><p class="eyebrow">CONCERN → EVIDENCE → REASSESSMENT</p><h2>우려 항목과 증빙 검증</h2><p>첨부 자료를 대조해 검증 상태와 판단 근거를 기록하세요.</p></div><span class="count-badge" id="review-progress">검증 전</span></div>
           <div id="evidence-review-list" class="evidence-review-list"></div>
           <div class="evidence-upload"><h3>고객 제출자료 보관</h3><p>먼저 사건을 저장하세요. 첨부파일은 이 PC의 프로젝트 폴더에만 저장되며 자동 판독하지 않습니다. 파일당 10MB 이하.</p><select id="evidence-finding"></select><input id="evidence-file" type="file" accept=".pdf,.docx,.xlsx,.csv,.png,.jpg,.jpeg" /><button class="secondary-button" type="button" id="upload-evidence">증빙 첨부</button><div id="attachment-list"></div></div>
           <div id="review-outcome" class="review-outcome"></div>

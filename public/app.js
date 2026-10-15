@@ -1,5 +1,6 @@
 import { renderFullReport, renderFullReportDocument } from "./final-report.js";
 import { buildListedReportModel } from "./listed-report-model.js";
+import { externalInterpretations, summarizeIndustryEvidence } from "./industry-signal.js";
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -978,11 +979,10 @@ function renderMacro() {
     return `<article class="macro-card"><div class="macro-card-head"><span class="macro-name">${escapeHtml(item.name)}</span><span class="freshness-tag ${timely ? "current" : "lagged"}">${timely ? "최신" : "시차 확인"}</span></div><div class="macro-value"><strong>${item.latest ? `${formatNumber(item.latest.value, 2)} ${escapeHtml(item.unit)}` : escapeHtml(item.status)}</strong><span class="delta">${Number.isFinite(delta) ? `직전 대비 ${macroDeltaText(delta, item.unit)}` : escapeHtml(item.message || "비교값 없음")}</span></div><p class="macro-source">${escapeHtml(published)} · ${escapeHtml(item.source || "출처 확인 필요")}${item.paginationComplete === false ? " · 일부 수집" : ""}</p><p class="macro-concern">${escapeHtml(narrative.concern)}</p><p class="macro-check"><b>확인자료</b> ${escapeHtml(narrative.verify)}</p><details class="macro-why"><summary>기업과 연결되는 이유</summary><p>${escapeHtml(narrative.why)}</p></details></article>`;
   }).join("");
   if (!macro.length) $("#macro-grid").innerHTML = `<div class="no-risk">연결된 외부지표가 없습니다.</div>`;
-  const items = state.analysis.assessment.interpretations.filter((item) => {
-    if (item.type !== "외부환경") return false;
-    if (profile.id === "manufacturing" || profile.id === "general") return true;
-    return !/수출|제조업|환율/.test(item.text || "");
-  });
+  const items = externalInterpretations(state.analysis.assessment?.interpretations, profile.id);
+  const interpretationDetails = $(".macro-interpretations");
+  interpretationDetails.hidden = items.length === 0;
+  if (!items.length) interpretationDetails.open = false;
   $("#interpretation-list").innerHTML = items.map((item) => `<div class="interpretation"><b>[${escapeHtml(item.type || "해석")}]</b><span>${escapeHtml(item.text)}</span><small>${escapeHtml(item.source || item.confidence || "규칙 기반")}</small></div>`).join("");
 }
 
@@ -1150,9 +1150,10 @@ function renderIndustryEvidence() {
   const items = state.industryEvidence;
   $("#industry-evidence-count").textContent = items.length ? `· ${items.length}개 입력` : "";
   $("#industry-evidence-list").innerHTML = items.length ? items.map((item, index) => {
-    const change = item.latest - item.previous;
+    const signal = summarizeIndustryEvidence(item);
     const sourceStatus = item.sourceType === "kosis" ? "KOSIS 공식 수치" : "담당자 입력 · 검증 전";
-    return `<article class="industry-evidence-item"><div><b>${escapeHtml(item.name)}</b><span>${escapeHtml(item.period)} · ${escapeHtml(sourceStatus)}</span><span>${escapeHtml(item.source)}</span></div><strong class="tone-neutral">${formatNumber(item.previous, 2)} → ${formatNumber(item.latest, 2)} ${escapeHtml(item.unit || "")} (${changeText(change, "")})</strong><p>회사 매출노출 ${formatNumber(item.exposure, 1)}% · ${item.exposureBasis ? escapeHtml(item.exposureBasis) : "노출 근거 필요"}${item.comparisonWarning ? ` · ${escapeHtml(item.comparisonWarning)}` : ""}</p><button type="button" data-remove-industry="${index}" aria-label="지표 제거">×</button></article>`;
+    const source = /^https?:\/\//i.test(item.source) ? `<a href="${escapeHtml(item.source)}" target="_blank" rel="noopener noreferrer">원자료 ↗</a>` : escapeHtml(item.source);
+    return `<article class="industry-evidence-item industry-signal-${signal.tone}"><div class="industry-signal-head"><span class="industry-signal-badge">${escapeHtml(signal.label)}</span><b>${escapeHtml(item.name)}</b></div><div class="industry-signal-values"><strong>${formatNumber(item.previous, 2)} → ${formatNumber(item.latest, 2)} ${escapeHtml(item.unit || "")}</strong><span>${escapeHtml(signal.movement)}${signal.percentage ? ` (${escapeHtml(signal.percentage)})` : ""}</span></div><p class="industry-signal-headline">${escapeHtml(signal.headline)}</p><div class="industry-signal-meta"><span>${escapeHtml(item.period)} · ${escapeHtml(sourceStatus)}</span><span>회사 노출 근거: ${escapeHtml(item.exposureBasis || "미기재")}</span><span>${source}</span>${item.comparisonWarning ? `<span>${escapeHtml(item.comparisonWarning)}</span>` : ""}</div><p class="industry-signal-detail">${escapeHtml(signal.detail)}</p><button type="button" data-remove-industry="${index}" aria-label="지표 제거">×</button></article>`;
   }).join("") : `<p class="no-risk">추가한 업종지표가 없습니다.</p>`;
 }
 
@@ -1479,7 +1480,7 @@ function renderInspection() {
     const [observationHint, evidenceHint, followUpHint] = inspectionGuidance(item);
     const files = inspectionAttachments(item);
     const fileList = files.length ? `<ul class="inspection-attached-files">${files.map((file) => `<li><a href="${file.sessionOnly ? escapeHtml(file.objectUrl) : `/api/cases/${encodeURIComponent(state.caseId)}/evidence/${encodeURIComponent(file.id)}`}" download="${escapeHtml(file.name)}">${escapeHtml(file.name)}</a><small>${file.sessionOnly ? "브라우저 탭에만 임시 첨부" : "로컬 사건에 저장"} · 검증 전 · SHA256 ${escapeHtml(file.sha256?.slice(0, 12))}…</small></li>`).join("")}</ul>` : "";
-    const upload = `<div class="inspection-file-upload"><input type="file" data-inspection-file="${index}" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" hidden /><button type="button" class="secondary-button" data-inspection-upload="${index}">PDF·사진 첨부</button><small>${state.publicDemo ? "이 탭에서만 임시 첨부 · 서버 저장 없음 · 실제 고객자료 금지" : "이 항목에 연결해 로컬 저장"} · 파일당 10MB 이하 · 자동 판독 없음</small>${fileList}</div>`;
+    const upload = `<div class="inspection-file-upload"><input type="file" data-inspection-file="${index}" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" hidden /><button type="button" class="secondary-button" data-inspection-upload="${index}">PDF·사진 첨부</button>${fileList}</div>`;
     const options = [["미확인", "미확인"], ["확인", "정상 확인"], ["이상징후", "우려 확인"], ["자료요청", "자료 요청"]].map(([value, label]) => `<option value="${value}" ${selected === value ? "selected" : ""}>${label}</option>`).join("");
     return `<article class="inspection-item"><div class="inspection-item-head"><span class="category">${escapeHtml(item.category)}<small>${escapeHtml(item.ruleSource)}</small></span><div><h3>${escapeHtml(item.question)}</h3><p>${escapeHtml(item.reason)}</p></div><label>현장 판단<select data-inspection="${index}">${options}</select></label></div><div class="inspection-detail-fields"><label>관찰한 사실<textarea data-inspection-note="${index}" data-field="observation" rows="2" placeholder="${escapeHtml(observationHint)}">${escapeHtml(detail.observation || "")}</textarea></label><div class="inspection-evidence-field"><label>확인 근거·증빙<textarea data-inspection-note="${index}" data-field="evidence" rows="2" placeholder="${escapeHtml(evidenceHint)}">${escapeHtml(detail.evidence || "")}</textarea></label>${upload}</div><label>심사 영향·후속조치<textarea data-inspection-note="${index}" data-field="followUp" rows="2" placeholder="${escapeHtml(followUpHint)}">${escapeHtml(detail.followUp || "")}</textarea></label></div><small class="inspection-entry-state" data-inspection-state="${index}"></small></article>`;
   }).join("");
