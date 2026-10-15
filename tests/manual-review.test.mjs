@@ -83,6 +83,24 @@ test("비상장 분석 API는 감사·사업 입력의 출처 상태를 보존�
     assert.equal(data.manualReview.issues.some((item) => item.id === "audit-opinion-source"), false);
     const withoutPage = await fetch(`http://127.0.0.1:${port}/api/manual-analysis`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...input, auditReview: { opinion: "한정" } }) });
     assert.equal((await withoutPage.json()).manualReview.issues.some((item) => item.id === "audit-opinion-source"), true);
+    const undocumentedCorrection = await fetch(`http://127.0.0.1:${port}/api/manual-analysis`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...input, overrides: [{ period: "2025", field: "equity", value: "130" }] }),
+    });
+    assert.equal(undocumentedCorrection.status, 200);
+    const pending = (await undocumentedCorrection.json()).manualReview;
+    assert.equal(pending.issues.some((item) => item.type === "balance"), false);
+    assert.equal(pending.sourceReview.confirmed, false);
+    assert.equal(pending.sourceReview.correctionsWithoutEvidence, 1);
+    assert.equal(pending.issues.some((item) => item.id === "correction-source"), true);
+    const documentedCorrection = await fetch(`http://127.0.0.1:${port}/api/manual-analysis`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...input, overrides: [{ period: "2025", field: "equity", value: "130", page: "감사보고서 p.12", note: "자본총계 원문 대조" }] }),
+    });
+    const documented = (await documentedCorrection.json()).manualReview;
+    assert.equal(documented.sourceReview.confirmed, true);
+    assert.equal(documented.sourceReview.correctionsWithoutEvidence, 0);
+    assert.equal(documented.issues.some((item) => item.id === "correction-source"), false);
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }

@@ -53,9 +53,17 @@ export function buildPrivateReportModel(analysis, context = {}) {
     condition: "설비 계약·자기자금·수주·가동 계획과 연도별 현금수지를 대조한 뒤 심사역이 금액·만기·상환방식을 검토합니다.",
   } : null;
   const sourceName = text(context.csvName, "고객 제출 재무 CSV");
+  const corrections = Array.isArray(review.changes) ? review.changes : [];
+  const sourceBasis = corrections.length ? `${sourceName} + 담당자 수정 ${corrections.length}건` : sourceName;
   const pdfFiles = Array.isArray(context.pdfFiles) ? context.pdfFiles : [];
   const sources = [
     ...records.map((row) => ({ name: sourceName, period: `${row.period}년 연간`, scope: borrowerScope, status: sourceConfirmed ? "담당자 대조 기록 · 본문 자동검증 아님" : "고객 입력 · 원본 대조 전", locator: review.sourceReview?.note || "계정·페이지 기록 필요" })),
+    ...corrections.map((change) => ({
+      name: `${change.period}년 ${change.label || change.field || "계정"} 담당자 수정`,
+      period: `${change.period}년`, scope: borrowerScope,
+      status: change.page && change.note ? "담당자 원문 대조 기록 · 자동검증 전" : "원문 근거 미기록 · 잠정값",
+      locator: `${won(change.previous)} → ${won(change.current)} · ${change.page || "페이지 미기재"} · ${change.note || "수정 근거 미기재"}`,
+    })),
     ...pdfFiles.map((file) => ({ name: file.name, period: "첨부시점 미기록", scope: "재무·감사 원본 후보", status: "파일명·해시 기록 · PDF 본문 자동 판독 전", locator: file.sha256 ? `SHA-256 ${file.sha256.slice(0, 16)}…` : "해시 없음" })),
     ...Object.values(business).filter((entry) => entry?.text).map((entry) => ({ name: entry.source || `${entry.label} 담당자 메모`, period: "확인시점 미기록", scope: entry.label, status: "담당자 입력 · 원문 자동검증 전" })),
     ...(audit.opinion && !["미확인", "감사보고서 없음"].includes(audit.opinion) ? [{ name: audit.sourcePage || "감사보고서 출처 미기록", period: audit.reportDate || "감사보고서일 미기록", scope: "감사의견", status: "담당자 입력 · PDF 자동검증 전" }] : []),
@@ -67,18 +75,18 @@ export function buildPrivateReportModel(analysis, context = {}) {
     ...(analysis.primaryFsDiv === "CFS" ? [{ title: "차주 법인 별도재무제표 확보", reason: "연결자료는 그룹 위험이며 차주 직접 상환재원을 대체할 수 없습니다.", owner: "기업금융 담당자" }] : []),
   ];
   const definitions = [
-    { name: "부채비율", formula: "부채총계 ÷ 자기자본 × 100", accounts: "제출 재무상태표 부채총계·자본총계", period: `${latest.period || "연도 확인 필요"}년 말`, scope: borrowerScope, source: sourceName },
-    { name: "유동비율", formula: "유동자산 ÷ 유동부채 × 100", accounts: "제출 재무상태표 유동자산·유동부채", period: `${latest.period || "연도 확인 필요"}년 말`, scope: borrowerScope, source: sourceName },
-    { name: latest.financeCostsSource === "이자비용 대체값" ? "영업이익/이자비용(대체)" : "영업이익/금융비용", formula: `영업이익 ÷ ${latest.financeCostsSource === "이자비용 대체값" ? "제출 이자비용 대체값" : "제출 금융비용"}`, accounts: "계정 정의·이자 외 금융비용 포함 여부 원문 대조", period: `${latest.period || "연도 확인 필요"}년`, scope: borrowerScope, source: sourceName },
-    { name: "단순 FCF", formula: "영업활동현금흐름 - 유형·무형자산 취득", accounts: "고객 제출 현금흐름표", period: `${latest.period || "연도 확인 필요"}년`, scope: borrowerScope, source: sourceName },
-    { name: "현금전환주기", formula: "채권회수일 + 재고보유일 - 매입결제일", accounts: `${latest.workingCapitalDaysBasis || "고객 제출 매출채권·재고·매입채무"} · 계정 정의 원문 확인`, period: `${latest.period || "연도 확인 필요"}년`, scope: borrowerScope, source: sourceName },
+    { name: "부채비율", formula: "부채총계 ÷ 자기자본 × 100", accounts: "제출 재무상태표 부채총계·자본총계", period: `${latest.period || "연도 확인 필요"}년 말`, scope: borrowerScope, source: sourceBasis },
+    { name: "유동비율", formula: "유동자산 ÷ 유동부채 × 100", accounts: "제출 재무상태표 유동자산·유동부채", period: `${latest.period || "연도 확인 필요"}년 말`, scope: borrowerScope, source: sourceBasis },
+    { name: latest.financeCostsSource === "이자비용 대체값" ? "영업이익/이자비용(대체)" : "영업이익/금융비용", formula: `영업이익 ÷ ${latest.financeCostsSource === "이자비용 대체값" ? "제출 이자비용 대체값" : "제출 금융비용"}`, accounts: "계정 정의·이자 외 금융비용 포함 여부 원문 대조", period: `${latest.period || "연도 확인 필요"}년`, scope: borrowerScope, source: sourceBasis },
+    { name: "단순 FCF", formula: "영업활동현금흐름 - 유형·무형자산 취득", accounts: "고객 제출 현금흐름표", period: `${latest.period || "연도 확인 필요"}년`, scope: borrowerScope, source: sourceBasis },
+    { name: "현금전환주기", formula: "채권회수일 + 재고보유일 - 매입결제일", accounts: `${latest.workingCapitalDaysBasis || "고객 제출 매출채권·재고·매입채무"} · 계정 정의 원문 확인`, period: `${latest.period || "연도 확인 필요"}년`, scope: borrowerScope, source: sourceBasis },
   ];
   const scenario = context.scenario ? [context.scenario] : [];
   return {
     company: { name: analysis.company?.name || "기업명 확인 필요", industry: analysis.company?.industry || "업종 확인 필요", ceo: "고객 제출 원본 확인 필요", address: "고객 제출 원본 확인 필요", corpCode: "비상장 차주 · 법인 식별 원본 확인 필요" },
     basisDate: analysis.basisDate,
     basisLabel: borrowerScope,
-    sourceLabel: "고객 제출 CSV · PDF 본문 자동 판독 전",
+    sourceLabel: corrections.length ? `고객 제출 CSV + 담당자 수정 ${corrections.length}건 · 원본 대조 필요` : "고객 제출 CSV · PDF 본문 자동 판독 전",
     verificationStatus: confidence,
     loanRequest: { ...request }, records, interim: null,
     sections: {

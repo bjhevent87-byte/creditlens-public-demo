@@ -1280,3 +1280,141 @@ body { font-size: 17px; }
   body:not(.print-inspection-form) .report-panel > .section-heading { display: none !important; }
   body:not(.print-inspection-form) #report-sheet { width: 100%; max-width: none; margin: 0; padding: 0 !important; border: 0 !important; border-radius: 0; box-shadow: none !important; }
 }
+
+/* 상장 분석: 같은 사실의 반복을 접고, 수치와 다음 행동을 한 화면에 배치한다. */
+@media screen {
+  body.listed-compact .analysis-loading { position: fixed; z-index: 80; top: 72px; left: max(18px, 12vw); right: max(18px, 3vw); display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 12px 19px; border: 1px solid #b7d5fb; border-radius: 0 0 14px 14px; color: #123b72; background: #eaf4ff; box-shadow: 0 10px 26px #163e7130; }
+  body.listed-compact .analysis-loading[hidden] { display: none !important; }
+  body.listed-compact .analysis-loading strong, body.listed-compact .analysis-loading small { display: block; }
+  body.listed-compact .analysis-loading strong { font-size: 17px; }
+  body.listed-compact .analysis-loading small { margin-top: 2px; color: #42648c; font-size: 13px; }
+  body.listed-compact .analysis-loading-spinner { flex: 0 0 23px; width: 23px; height: 23px; border: 3px solid #afd0f7; border-top-color: #1765d1; border-radius: 50%; animation: listed-spin .8s linear infinite; }
+  @keyframes listed-spin { to { transform: rotate(360deg); } }
+  body.listed-compact .panel { padding: 20px 22px; margin-top: 13px; }
+  body.listed-compact .analysis-header { padding: 17px 21px; margin-top: 12px; }
+  body.listed-compact .workflow-stepbar { margin: 11px 0 0; }
+  body.listed-compact .workflow-stepbar button { min-height: 43px; }
+  body.listed-compact .analysis-detail-tabs { gap: 7px; margin: 12px 0 9px; padding: 6px; }
+  body.listed-compact .analysis-detail-tabs button { padding: 10px 15px; font-size: 16px; text-align: center; }
+  body.listed-compact .analysis-detail-tabs button small { display: none; }
+  body.listed-compact .decision-home { grid-template-columns: minmax(0, 1.65fr) minmax(275px, .85fr); gap: 10px; margin: 11px 0; }
+  body.listed-compact .decision-home .decision-lead, body.listed-compact .decision-home .decision-actions { grid-column: auto; }
+  body.listed-compact .decision-home > article, body.listed-compact .decision-home > aside { padding: 17px 19px; }
+  body.listed-compact .decision-lead h3 { margin: 9px 0 3px; font-size: clamp(20px, 1.7vw, 24px); line-height: 1.35; }
+  body.listed-compact .decision-metrics { margin-top: 11px; gap: 7px; }
+  body.listed-compact .decision-metric { padding: 10px 11px; }
+  body.listed-compact .decision-metric strong { font-size: clamp(18px, 1.55vw, 22px); }
+  body.listed-compact .decision-actions ul { list-style: none; margin: 8px 0 0; padding: 0; }
+  body.listed-compact .decision-actions li { display: grid; gap: 2px; margin: 0; padding: 8px 0; border-top: 1px solid #e7eef6; color: #26394f; font-size: 14px; }
+  body.listed-compact .decision-actions li b { color: #1765d1; font-size: 14px; }
+  body.listed-compact .decision-actions li span { color: #344a60; font-size: 14px; line-height: 1.35; }
+  body.listed-compact .decision-request { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; margin-top: 12px; padding-top: 10px; border-top: 1px solid #e2ebf5; }
+  body.listed-compact .decision-request > span { color: #65788d; font-size: 14px; }
+  body.listed-compact .decision-request strong { color: #1b3554; font-size: 17px; }
+  body.listed-compact .decision-request button { margin-left: auto; }
+  body.listed-compact .summary-deep-dive { margin: 8px 0; }
+  body.listed-compact .summary-deep-dive > summary, body.listed-compact .filing-deep-dive > summary { padding: 11px 15px; }
+  body.listed-compact .trace-disclosure, body.listed-compact .performance-deep-dive, body.listed-compact .loan-detail-disclosure, body.listed-compact .macro-interpretations { margin: 10px 0; border: 1px solid #dfe7f1; border-radius: 12px; background: #fff; }
+  body.listed-compact .trace-disclosure > summary, body.listed-compact .performance-deep-dive > summary, body.listed-compact .loan-detail-disclosure > summary, body.listed-compact .macro-interpretations > summary { padding: 12px 16px; color: #145db8; font-size: 15px; font-weight: 800; cursor: pointer; }
+  body.listed-compact .trace-disclosure > summary span { margin-left: 8px; color: #6a7c8e; font-size: 13px; font-weight: 500; }
+  body.listed-compact .evidence-trace { margin: 0; padding: 12px; border: 0; box-shadow: none; }
+  body.listed-compact .trace-heading { margin-bottom: 10px; }
+  body.listed-compact .trace-heading h2 { font-size: 20px; }
+  body.listed-compact .trace-actions { margin-top: 5px; }
+  body.listed-compact .trace-actions li { color: #1c426b; font-size: 16px; font-weight: 800; }
+  body.listed-compact .trace-formula { margin-bottom: 13px; color: #4c637d; font-size: 13px; }
+  body.listed-compact .trace-formula summary { color: #1765d1; cursor: pointer; }
+  body.listed-compact .performance-conclusion { margin: 10px 0; padding: 16px; }
+  body.listed-compact .performance-conclusion h3 { font-size: 23px; }
+  body.listed-compact .conclusion-statuses { margin: 10px 0; gap: 5px; }
+  body.listed-compact .conclusion-status { padding: 5px 9px; }
+  body.listed-compact .conclusion-carousel { grid-template-columns: 34px minmax(0, 1fr) 34px; gap: 5px; }
+  body.listed-compact .conclusion-scroll { width: 34px; height: 34px; }
+  body.listed-compact .conclusion-signals { grid-auto-columns: minmax(210px, 24%); gap: 8px; padding-bottom: 5px; }
+  body.listed-compact .conclusion-signal { min-height: 0; padding: 12px; }
+  body.listed-compact .conclusion-signal h4 { margin: 4px 0 6px; font-size: 17px; }
+  body.listed-compact .conclusion-signal > p { margin: 6px 0; }
+  body.listed-compact .conclusion-values { gap: 5px; font-size: 15px; }
+  body.listed-compact .conclusion-values strong { font-size: 18px; }
+  body.listed-compact .conclusion-footer { margin-top: 8px; padding-top: 7px; border: 0; }
+  body.listed-compact .performance-deep-dive .performance-grid { padding: 14px; }
+  body.listed-compact .performance-deep-dive .constitution-layout { padding: 0 14px 14px; }
+  body.listed-compact .industry-guide { margin-bottom: 10px; padding: 11px 14px; }
+  body.listed-compact .industry-guide p { margin-top: 2px; font-size: 14px; }
+  body.listed-compact .macro-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; }
+  body.listed-compact .macro-card { min-height: 0; padding: 13px 15px; }
+  body.listed-compact .macro-card .macro-name { color: #3c5269; font-size: 15px; font-weight: 800; }
+  body.listed-compact .macro-value { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 2px 9px; margin: 6px 0 3px; }
+  body.listed-compact .macro-value strong { display: inline; margin: 0; color: #213c58; font-size: 21px; }
+  body.listed-compact .macro-value .delta { margin: 0; font-size: 14px; }
+  body.listed-compact .macro-card .macro-source { color: #60758b; font-size: 13px; }
+  body.listed-compact .macro-card .macro-concern { margin-top: 9px; color: #263e58; font-size: 14px; line-height: 1.4; }
+  body.listed-compact .macro-card .macro-check { margin-top: 7px; color: #1f4d80; font-size: 14px; line-height: 1.4; }
+  body.listed-compact .macro-card .macro-check b { margin-right: 5px; }
+  body.listed-compact .macro-why { margin-top: 8px; color: #4d637a; font-size: 13px; }
+  body.listed-compact .macro-why summary { color: #1765d1; cursor: pointer; }
+  body.listed-compact .macro-interpretations > .interpretation-list { padding: 0 12px 12px; }
+  body.listed-compact .industry-evidence { margin-top: 10px; }
+  body.listed-compact .industry-evidence > summary { padding: 12px 15px; font-size: 15px; }
+  body.listed-compact .risk-card { grid-template-columns: 4px minmax(210px, .95fr) minmax(220px, 1.2fr) minmax(120px, .55fr); gap: 11px; padding: 13px; }
+  body.listed-compact .risk-evidence strong { font-size: 21px; }
+  body.listed-compact .risk-next h4 { margin-bottom: 6px; color: #1758a6; font-size: 14px; }
+  body.listed-compact .risk-next .tag-list { display: flex; gap: 5px; flex-wrap: wrap; }
+  body.listed-compact .risk-next .tag-list span { color: #174779; background: #e9f3ff; font-size: 14px; font-weight: 700; }
+  body.listed-compact .risk-why summary { color: #1765d1; font-size: 14px; font-weight: 800; cursor: pointer; }
+  body.listed-compact .risk-why p { margin-top: 7px; }
+  body.listed-compact .loan-overview-period { margin: 0 0 9px; font-size: 14px; }
+  body.listed-compact .loan-glance-grid { gap: 10px; }
+  body.listed-compact .loan-glance-card { padding: 15px 17px; }
+  body.listed-compact .loan-glance-head h3 { margin-top: 2px; font-size: 20px; }
+  body.listed-compact .loan-glance-head > strong { font-size: 23px; }
+  body.listed-compact .loan-prelim { display: flex; align-items: center; gap: 9px; margin-top: 7px; color: #744a16; font-size: 14px; line-height: 1.35; }
+  body.listed-compact .loan-prelim span { color: #9a6724; font-weight: 750; }
+  body.listed-compact .loan-prelim strong { font-weight: 800; }
+  body.listed-compact .loan-glance-facts { gap: 7px; margin: 10px 0; }
+  body.listed-compact .loan-glance-fact { padding: 9px 11px; }
+  body.listed-compact .loan-glance-fact strong { font-size: 19px; white-space: normal; }
+  body.listed-compact .loan-glance-fact small { font-size: 13px; line-height: 1.4; }
+  body.listed-compact .loan-ratio-impact, body.listed-compact .loan-next-action { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 10px; padding: 8px 0; border-top: 1px solid #e8eef5; font-size: 14px; }
+  body.listed-compact .loan-ratio-impact strong { color: #153e6b; font-size: 17px; }
+  body.listed-compact .loan-next-action { color: #244c77; }
+  body.listed-compact .loan-next-action b { color: #1765d1; }
+  body.listed-compact .loan-combined { grid-template-columns: auto auto 1fr; margin: 9px 0 5px; padding: 11px 14px; font-size: 14px; }
+  body.listed-compact .loan-combined strong { grid-column: auto; font-size: 15px; }
+  body.listed-compact .loan-combined span:nth-child(2) { color: #1455a6; font-weight: 800; }
+  body.listed-compact .loan-impact-assumption { margin: 5px 0 0; color: #63778b; font-size: 13px; line-height: 1.4; }
+  body.listed-compact .loan-detail-disclosure .loan-tabs { margin: 0 13px 10px; }
+  body.listed-compact .loan-detail-disclosure .loan-grid { margin: 0 13px 13px; }
+  body.listed-compact .loan-rule-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  body.listed-compact .loan-integrated-action { padding: 10px 12px; color: #244a72; background: #eef6ff; font-size: 15px; }
+  body.listed-compact .stress-layout { gap: 13px; }
+  body.listed-compact .stress-controls { gap: 8px; }
+  body.listed-compact .stress-controls label { padding: 12px 14px; }
+  body.listed-compact .stress-result { min-height: 0; padding: 17px; }
+  body.listed-compact .stress-result h3 { font-size: 21px; }
+  body.listed-compact .stress-metrics { margin: 10px 0; gap: 7px; }
+  body.listed-compact .stress-metrics.simple strong { font-size: 21px; }
+  body.listed-compact .stress-loan-impact { display: grid; gap: 4px; padding: 10px 11px; border: 1px solid #cbdff7; border-radius: 9px; background: #fff; color: #1b416b; font-size: 14px; }
+  body.listed-compact .stress-loan-impact span { font-weight: 800; }
+  body.listed-compact .stress-loan-impact small { color: #63778c; font-size: 12px; font-weight: 500; }
+  body.listed-compact .stress-loan-impact strong { color: #995b0a; font-size: 14px; }
+  body.listed-compact .stress-calculations { margin-top: 7px; }
+  body.listed-compact .chart-note, body.listed-compact .cashflow-caution { display: none; }
+}
+@media screen and (max-width: 1180px) {
+  body.listed-compact .decision-home { grid-template-columns: 1fr; }
+  body.listed-compact .macro-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body.listed-compact .risk-card { grid-template-columns: 4px minmax(190px, 1fr) minmax(220px, 1.3fr); }
+  body.listed-compact .risk-why { grid-column: 2 / -1; }
+}
+@media screen and (max-width: 760px) {
+  body.listed-compact .analysis-loading { top: 64px; left: 8px; right: 8px; }
+  body.listed-compact .panel { padding: 17px; }
+  body.listed-compact .decision-metrics { grid-template-columns: 1fr; }
+  body.listed-compact .macro-grid, body.listed-compact .loan-rule-columns, body.listed-compact .loan-glance-grid { grid-template-columns: 1fr; }
+  body.listed-compact .loan-combined { grid-template-columns: 1fr; }
+  body.listed-compact .conclusion-signals { grid-auto-columns: minmax(210px, 88%); }
+  body.listed-compact .risk-card { grid-template-columns: 4px 1fr; }
+  body.listed-compact .risk-card > :not(.risk-bar) { grid-column: 2; }
+}
+@media print { body.listed-compact .analysis-loading { display: none !important; } }

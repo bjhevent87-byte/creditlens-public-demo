@@ -138,7 +138,7 @@ export function inspectManualStatementsCsv(csvText, { unit = "억원", sourceNam
     entry.record[field] = Number(value) * multiplier;
     entry.values[field] = value;
     invalidInputs.delete(`${period}:${field}`);
-    changes.push({ period, field, previous, current: entry.record[field], page: String(revision.page || "").slice(0, 30), note: String(revision.note || "").slice(0, 300), status: "담당자 수정 · 원본 자동 대조 아님" });
+    changes.push({ period, field, label: MANUAL_CSV_LABELS[field], previous, current: entry.record[field], page: String(revision.page || "").slice(0, 30), note: String(revision.note || "").slice(0, 300), status: "담당자 수정 · 원본 자동 대조 아님" });
   }
 
   normalized.sort((left, right) => left.period.localeCompare(right.period));

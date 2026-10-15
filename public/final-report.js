@@ -350,11 +350,22 @@ function renderOpinion(section, opinionInput, inspections) {
 function renderInspectionSummary(items) {
   const completed = items.filter(inspectionComplete).length;
   const concerns = items.filter((item) => /우려|이상|자료\s*요청/.test(String(item?.selectedStatus || item?.status || ""))).length;
-  return `<div class="cr-inspection-summary"><div><span>점검 항목</span><strong>${items.length}건</strong></div><div><span>관찰·근거·후속조치 기록</span><strong>${completed}건</strong></div><div><span>우려·자료 요청</span><strong>${concerns}건</strong></div></div><p class="cr-caption">현장 판단, 관찰 사실, 확인 근거, 심사 영향·후속조치를 각각 기록했습니다. 파일명·해시는 원본 내용 검증을 의미하지 않습니다.</p>`;
+  return `<div class="cr-inspection-summary"><div><span>점검 항목</span><strong>${items.length}건</strong></div><div><span>관찰·근거·후속조치 기록</span><strong>${completed}건</strong></div><div><span>우려·자료 요청</span><strong>${concerns}건</strong></div></div><p class="cr-caption">기록한 항목은 아래에 관찰·근거·후속조치를 표시합니다. 첨부파일의 내용은 자동 검증되지 않았습니다.</p>`;
+}
+function inspectionUntouched(raw) {
+  const item = asObject(raw);
+  const status = String(item.selectedStatus || item.status || "미확인").trim();
+  return (!status || status === "미확인")
+    && !String(item.observation || "").trim()
+    && !String(item.evidence || "").trim()
+    && !String(item.action || item.followUp || "").trim()
+    && asArray(item.files).length === 0;
 }
 function renderInspectionItems(items) {
   if (!items.length) return `<p class="cr-empty">현장실사 항목이 아직 생성되지 않았거나 입력되지 않았습니다.</p>`;
-  return `<div class="cr-inspection-list">${items.map((raw, index) => {
+  const recorded = items.map((item, index) => ({ item, index })).filter(({ item }) => !inspectionUntouched(item));
+  const untouched = items.map((item, index) => ({ item, index })).filter(({ item }) => inspectionUntouched(item));
+  const recordedHtml = recorded.length ? `<div class="cr-inspection-list">${recorded.map(({ item: raw, index }) => {
     const item = asObject(raw);
     const files = asArray(item.files);
     const complete = inspectionComplete(item);
@@ -362,15 +373,25 @@ function renderInspectionItems(items) {
       const entry = typeof file === "string" ? { name: file } : asObject(file);
       return `${esc(text(entry.name, "파일명 확인 필요"))}${entry.sha256 ? ` (SHA-256 ${esc(String(entry.sha256).slice(0, 16))}…)` : ""}`;
     }).join(" · ") : "선택 파일 없음"}</p></section>`;
-  }).join("")}</div>`;
+  }).join("")}</div>` : "";
+  const untouchedHtml = untouched.length ? `<div class="cr-inspection-pending"><h3>방문 전 점검 대상 · ${untouched.length}건</h3><div>${untouched.map(({ item: raw, index }) => {
+    const item = asObject(raw);
+    return `<p><b>${String(index + 1).padStart(2, "0")} · ${esc(text(item.category, "현장 항목"))}</b><span>${esc(text(item.question, "점검 질문 확인 필요"))}</span></p>`;
+  }).join("")}</div></div>` : "";
+  return recordedHtml + untouchedHtml;
 }
 function renderOpenItems(value) {
   const items = asArray(value);
   if (!items.length) return `<p class="cr-empty">추가 확인 과제가 정리되지 않았습니다. 자동 경고가 없다는 것이 위험 부재를 뜻하지 않습니다.</p>`;
-  return `<ol class="cr-open-list">${items.map((raw) => {
+  const pendingSite = items.filter((raw) => {
+    const item = typeof raw === "string" ? { title: raw } : asObject(raw);
+    return /현장 (재)?확인$/.test(String(item.title || "")) && /·\s*미확인/.test(String(item.reason || ""));
+  });
+  const visible = items.filter((item) => !pendingSite.includes(item));
+  return `${pendingSite.length ? `<p class="cr-compact-callout"><b>현장 미확인 ${pendingSite.length}건</b><span>9장 점검 대상 참조 · 방문 후 관찰과 증빙을 기록하세요.</span></p>` : ""}${visible.length ? `<ol class="cr-open-list">${visible.map((raw) => {
     const item = typeof raw === "string" ? { title: raw } : asObject(raw);
     return `<li><b>${esc(text(item.title))}</b>${item.reason ? `<p>${esc(item.reason)}</p>` : ""}${item.owner ? `<small>확인 담당: ${esc(item.owner)}</small>` : ""}</li>`;
-  }).join("")}</ol>`;
+  }).join("")}</ol>` : ""}`;
 }
 function consolidateSources(value) {
   const entries = asArray(value).map((raw) => typeof raw === "string" ? { name: raw } : asObject(raw));

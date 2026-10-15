@@ -186,7 +186,12 @@ async function api(req, res, url) {
     const analysis = await assembleAnalysis({ company, companyInfo: null, statementSets: { [fsDiv]: records }, loanRequest, macroRows: [], mode: "고객제출 CSV · 원본 미검증", requestedYear: Number(records.at(-1).period), latestAvailableYear: Number(records.at(-1).period) });
     const accountingStandard = ["K-IFRS", "일반기업회계기준", "기타", "확인 전"].includes(input.accountingStandard) ? input.accountingStandard : "확인 전";
     const auditStatus = ["감사보고서 원문 대조 전", "감사보고서 없음", "감사의견 원문 확인 필요"].includes(input.auditStatus) ? input.auditStatus : "감사보고서 원문 대조 전";
-    const sourceReview = { confirmed: input.sourceReview?.confirmed === true && String(input.sourceReview?.note || "").trim().length >= 5, note: String(input.sourceReview?.note || "").trim().slice(0, 300) };
+    const correctionsWithoutEvidence = inspected.changes.filter((change) => !change.page.trim() || !change.note.trim());
+    const sourceReview = {
+      confirmed: input.sourceReview?.confirmed === true && String(input.sourceReview?.note || "").trim().length >= 5 && correctionsWithoutEvidence.length === 0,
+      note: String(input.sourceReview?.note || "").trim().slice(0, 300),
+      correctionsWithoutEvidence: correctionsWithoutEvidence.length,
+    };
     const allowedAuditOpinions = new Set(["미확인", "적정", "한정", "부적정", "의견거절", "감사보고서 없음"]);
     const rawAuditOpinion = String(input.auditReview?.opinion || "미확인").trim();
     const auditReview = {
@@ -209,11 +214,11 @@ async function api(req, res, url) {
     const metadataIssues = [
       ...(accountingStandard === "확인 전" ? [{ id: "accounting-standard", type: "metadata", severity: "review", title: "적용 회계기준 확인 필요", detail: "원본 표지와 주석에서 적용 회계기준을 확인하세요.", affects: ["계정 정의·비교가능성"], fields: [] }] : []),
       ...(fsDiv === "CFS" ? [{ id: "borrower-separate", type: "metadata", severity: "blocking", title: "차주 법인 별도재무제표 필요", detail: "연결자료는 그룹 위험을 보여주지만 차주 법인의 직접 상환능력을 대신하지 않습니다.", affects: ["차주 상환능력"], fields: [] }] : []),
-      ...(!sourceReview.confirmed ? [{ id: "source-reconciliation", type: "metadata", severity: "review", title: "제출 원본과 입력 수치 대조 전", detail: "파일명·해시만으로 원본 수치나 감사의견을 검증할 수 없습니다. 담당자가 원문 페이지와 계정명을 대조하고 근거를 기록하세요.", affects: ["모든 자동 해석"], fields: [] }] : []),
+      ...(correctionsWithoutEvidence.length ? [{ id: "correction-source", type: "metadata", severity: "review", title: `수정값 ${correctionsWithoutEvidence.length}건의 원문 근거 미기록`, detail: "숫자 검산 통과는 원본과 일치한다는 뜻이 아닙니다. 수정값마다 원문 페이지·계정 및 변경 이유를 기록하세요.", affects: ["수정값이 반영된 재무지표·보고서"], fields: [] }] : !sourceReview.confirmed ? [{ id: "source-reconciliation", type: "metadata", severity: "review", title: "제출 원본과 입력 수치 대조 전", detail: "파일명·해시만으로 원본 수치나 감사의견을 검증할 수 없습니다. 담당자가 원문 페이지와 계정명을 대조하고 근거를 기록하세요.", affects: ["모든 자동 해석"], fields: [] }] : []),
       ...(auditReview.opinion !== "미확인" && auditReview.opinion !== "감사보고서 없음" && !auditReview.sourcePage ? [{ id: "audit-opinion-source", type: "metadata", severity: "review", title: "감사의견 원문 위치 필요", detail: "입력한 감사의견의 감사보고서명·페이지를 기록해 심사역이 원문을 대조할 수 있도록 하세요.", affects: ["감사의견 근거"], fields: [] }] : []),
       ...(auditStatus === "감사보고서 없음" && !["미확인", "감사보고서 없음"].includes(auditReview.opinion) ? [{ id: "audit-status-conflict", type: "metadata", severity: "review", title: "감사보고서 상태와 입력 의견 불일치", detail: "감사보고서 없음으로 선택했으나 구체적 감사의견도 입력했습니다. 원본 유무와 상태를 다시 대조하세요.", affects: ["감사의견 근거"], fields: [] }] : []),
     ];
-    return sendJson(res, 200, { ...analysis, manualReview: { issues: [...inspected.issues, ...metadataIssues], changes: inspected.changes, inputUnit: inspected.inputUnit, statementBasis: fsDiv, accountingStandard, auditStatus, auditReview, businessEvidence, sourceReview, sourceStatus: sourceReview.confirmed ? "담당자 대조 기록 · PDF 자동검증 아님" : "담당자 대조 전 · 수치 계산은 잠정" } });
+    return sendJson(res, 200, { ...analysis, manualReview: { issues: [...inspected.issues, ...metadataIssues], changes: inspected.changes, inputUnit: inspected.inputUnit, statementBasis: fsDiv, accountingStandard, auditStatus, auditReview, businessEvidence, sourceReview, sourceStatus: sourceReview.confirmed ? "담당자 대조 기록 · PDF 자동검증 아님" : correctionsWithoutEvidence.length ? "수정값 원문 근거 미기록 · 수치 계산은 잠정" : "담당자 대조 전 · 수치 계산은 잠정" } });
   }
   if (url.pathname === "/api/analyze" && req.method === "POST") {
     const input = await parseJsonBody(req);

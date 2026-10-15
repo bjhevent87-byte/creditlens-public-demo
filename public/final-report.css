@@ -138,6 +138,12 @@
 .credit-full-report .cr-inspection-fields b { display: block; color: var(--cr-muted); font-size: 11px; }
 .credit-full-report .cr-inspection-fields p { margin: 5px 0 0; font-size: 12px; white-space: pre-line; overflow-wrap: anywhere; }
 .credit-full-report .cr-file-meta { margin: 9px 0 0; color: var(--cr-muted); font-size: 11px; overflow-wrap: anywhere; }
+.credit-full-report .cr-inspection-pending { margin-top: 14px; padding: 14px 16px; border: 1px solid var(--cr-line); border-radius: 10px; background: #f8faf8; }
+.credit-full-report .cr-inspection-pending h3 { margin: 0 0 9px; }
+.credit-full-report .cr-inspection-pending > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 12px; }
+.credit-full-report .cr-inspection-pending p { display: flex; gap: 7px; margin: 0; padding: 5px 0; border-bottom: 1px solid var(--cr-line); font-size: 11px; line-height: 1.4; }
+.credit-full-report .cr-inspection-pending p b { flex: 0 0 72px; color: #2f6c54; }
+.credit-full-report .cr-inspection-pending p span { min-width: 0; }
 .credit-full-report .cr-open-list { padding-left: 28px; counter-reset: review-item; }
 .credit-full-report .cr-open-list li { padding: 9px 12px; border-bottom: 1px solid var(--cr-line); }
 .credit-full-report .cr-open-list li::marker { color: #32795a; font-weight: 800; }
@@ -159,6 +165,7 @@
 }
 @media (max-width: 530px) {
   .credit-full-report .cr-toc ol, .credit-full-report .cr-stat-grid, .credit-full-report .cr-inspection-summary, .credit-full-report .cr-indicator-grid, .credit-full-report .cr-ratio-grid, .credit-full-report .cr-change-grid, .credit-full-report .cr-finding-grid, .credit-full-report .cr-scenario-grid, .credit-full-report .cr-loan-grid, .credit-full-report .cr-opinion-columns, .credit-full-report .cr-request-grid, .credit-full-report .cr-debt-head { grid-template-columns: 1fr; }
+  .credit-full-report .cr-inspection-pending > div { grid-template-columns: 1fr; }
   .credit-full-report .cr-section-heading h2 { font-size: 21px; }
   .credit-full-report .cr-opinion-status { display: block; }
   .credit-full-report .cr-opinion-status > * { display: block; }
@@ -181,6 +188,7 @@
   .credit-full-report .cr-toc + .cr-section { break-before: page; page-break-before: always; }
   .credit-full-report .cr-section { padding: 8mm 0 5mm; break-inside: auto; }
   .credit-full-report .cr-section-heading { break-after: avoid-page; }
+  .credit-full-report #cr-section-11 { break-before: page; page-break-before: always; }
   .credit-full-report .cr-section-heading > span { color: #123f36; border: 1px solid #123f36; background: #fff; }
   .credit-full-report .cr-section-heading h2 { font-size: 17pt; }
   .credit-full-report h3, .credit-full-report h4 { break-after: avoid-page; }
@@ -192,6 +200,7 @@
   .credit-full-report .cr-scenario, .credit-full-report .cr-scenario-grid, .credit-full-report .cr-inspection-list, .credit-full-report .cr-inspection-item, .credit-full-report .cr-inspection-fields, .credit-full-report .cr-inspection-fields > div { width: 100%; max-width: 100%; min-width: 0; }
   .credit-full-report .cr-scenario, .credit-full-report .cr-inspection-item { overflow-wrap: anywhere; word-break: break-word; }
   .credit-full-report .cr-inspection-fields { grid-template-columns: minmax(0, 1fr); }
+  .credit-full-report .cr-inspection-pending p { break-inside: avoid-page; }
   .credit-full-report .cr-inspection-item-head { align-items: flex-start; }
   .credit-full-report .cr-inspection-item-head > span:first-child { min-width: 0; }
   .credit-full-report .cr-inspection-item-head .cr-tag { max-width: 55mm; white-space: normal; text-align: right; }

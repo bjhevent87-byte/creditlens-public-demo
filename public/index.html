@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="/ux-refresh.css" />
   <link rel="stylesheet" href="/final-report.css" />
 </head>
-<body>
+<body class="listed-compact">
   <header class="topbar">
     <a class="brand" href="#top" aria-label="CreditLens 홈">
       <span class="brand-mark">CL</span>
@@ -28,6 +28,11 @@
       <span id="basis-date"></span>
     </div>
   </header>
+
+  <div class="analysis-loading" id="analysis-loading" role="status" aria-live="polite" hidden>
+    <span class="analysis-loading-spinner" aria-hidden="true"></span>
+    <span><strong>기업 공시와 재무정보를 분석 중입니다</strong><small>자료 수집·검산이 끝나면 결과로 이동합니다.</small></span>
+  </div>
 
   <div class="app-shell" id="top">
     <aside class="sidebar" aria-label="분석 메뉴">
@@ -142,7 +147,7 @@
           <button type="button" role="tab" data-analysis-detail="credit" aria-controls="analysis-credit-panel">여신·시나리오 <small>용도별 검토와 민감도</small></button>
         </nav>
         <div id="analysis-financial-panel" role="tabpanel">
-        <section class="evidence-trace" id="evidence-trace" aria-label="원문 수치 판단 대조"></section>
+        <details class="trace-disclosure"><summary>공시 원문·계산값 대조 <span>필요할 때 펼치기</span></summary><section class="evidence-trace" id="evidence-trace" aria-label="원문 수치 판단 대조"></section></details>
         <details class="filing-deep-dive"><summary>최근 공시·감사의견 상세 확인</summary><section class="recent-disclosure" id="recent-update" aria-label="최신 공시와 감사 검토"></section></details>
 
         <section class="panel" id="financials">
@@ -188,15 +193,15 @@
           </div>
           <div id="interim-performance-panel" role="tabpanel" hidden></div>
           <div id="annual-performance-panel" role="tabpanel">
-          <div class="analysis-standard"><b>판정 기준</b><span>직전연도와 비교합니다.</span><span>좋아지는 방향은 초록, 나빠지는 방향은 빨강, 유의한 변화가 없으면 회색으로 표시합니다.</span></div>
           <aside class="performance-conclusion" id="performance-conclusion" aria-label="경영성과 핵심 요약"></aside>
-          <div class="performance-grid" id="performance-grid"></div>
+          <details class="performance-deep-dive" id="performance-deep-dive"><summary>5개 영역의 상세 지표·원인 검증 펼치기</summary><div class="performance-grid" id="performance-grid"></div>
           <div class="constitution-layout">
             <div>
               <div class="subheading"><p class="eyebrow">OBSERVATION → HYPOTHESIS → VERIFICATION</p><h3>재무 변화 진단과 검증 계획</h3><p>관찰된 숫자에서 가능한 원인을 서술하고, 실제 자료와 질문으로 검증합니다.</p></div>
               <div class="hypothesis-list" id="hypothesis-list"></div>
             </div>
           </div>
+          </details>
           </div>
         </section>
 
@@ -209,11 +214,11 @@
         </section>
 
         <section class="panel" id="external">
-          <div class="section-heading"><div><p class="eyebrow">COMPANY × INDUSTRY × ECONOMY</p><h2>금리·경기 및 업종 동향</h2><p>기업 업종에 맞는 지표만 선별하고 최신 수록시점과 기업에 영향을 주는 경로를 표시합니다.</p></div><div class="data-badge" id="industry-profile"></div></div>
+          <div class="section-heading"><div><p class="eyebrow">COMPANY × INDUSTRY × ECONOMY</p><h2>금리·경기 및 업종 동향</h2></div><div class="data-badge" id="industry-profile"></div></div>
           <div class="industry-guide" id="industry-guide"></div>
           <div class="macro-grid" id="macro-grid"></div>
-          <div class="interpretation-list" id="interpretation-list"></div>
-          <details class="industry-evidence"><summary><strong>선택 분석 · 업종지표 연결 <em id="industry-evidence-count"></em></strong><span>업종 통계의 방향만으로 기업 위험을 단정하지 않습니다. 실제 매출·원가 노출을 확인할 때 사용합니다.</span></summary><div class="industry-evidence-body"><p>KOSIS 지표는 공식 수치를 조회할 수 있습니다. 회사 노출비중은 고객자료로 확인해 입력하세요. 다른 출처의 수치는 수동 입력이며 검증 전으로 표시합니다.</p><label class="industry-selector"><b>관련 업종지표 선택</b><select id="industry-template"><option value="">지표를 선택하세요</option></select></label><p class="industry-source-help" id="industry-source-help">선택한 지표의 공식 통계 출처와 활용 이유를 표시합니다.</p>
+          <details class="macro-interpretations"><summary>외부환경 해석 더 보기</summary><div class="interpretation-list" id="interpretation-list"></div></details>
+          <details class="industry-evidence"><summary><strong>업종지표 추가·대조 <em id="industry-evidence-count"></em></strong></summary><div class="industry-evidence-body"><p>회사 매출·원가 노출이 확인된 지표만 연결하세요. 직접 입력값은 원자료 대조 전으로 남습니다.</p><label class="industry-selector"><b>관련 업종지표 선택</b><select id="industry-template"><option value="">지표를 선택하세요</option></select></label><p class="industry-source-help" id="industry-source-help">지표를 선택하면 공식 출처를 표시합니다.</p>
             <div class="kosis-tool" id="kosis-tool" hidden>
               <div class="kosis-tool-heading"><strong>KOSIS 공식 수치 찾기</strong><span>① 통계표 검색 → ② 세부 계열 선택 → ③ 회사 노출 입력</span></div>
               <div class="kosis-search-row"><input id="kosis-search" placeholder="예: 광공업생산지수, 소매업태별 판매액지수" aria-label="KOSIS 통계표 검색어" /><button class="secondary-button" id="kosis-search-button" type="button">통계표 검색</button></div>
@@ -229,10 +234,9 @@
         <div id="analysis-credit-panel" role="tabpanel" hidden>
 
         <section class="panel" id="loan-review">
-          <div class="section-heading"><div><p class="eyebrow">LOAN PURPOSE ANALYSIS</p><h2>자금용도별 검토</h2><p>운전자금은 회전과 단기 상환재원, 시설자금은 투자 타당성과 장기 현금창출력을 중심으로 봅니다.</p></div></div>
+          <div class="section-heading"><div><p class="eyebrow">LOAN PURPOSE ANALYSIS</p><h2>자금용도별 검토</h2></div></div>
           <div class="loan-overview" id="loan-overview"></div>
-          <div class="loan-tabs" id="loan-tabs" role="tablist"></div>
-          <div class="loan-grid" id="loan-grid"></div>
+          <details class="loan-detail-disclosure" id="loan-detail-disclosure"><summary>자금용도별 계산·근거 펼치기</summary><div class="loan-tabs" id="loan-tabs" role="tablist"></div><div class="loan-grid" id="loan-grid"></div></details>
           <p class="disclaimer" id="decision-disclaimer"></p>
         </section>
 
@@ -253,11 +257,11 @@
         </section>
 
         <section class="panel" id="stress">
-          <div class="section-heading"><div><p class="eyebrow">SIMPLE OPERATING SCENARIO</p><h2>매출·영업이익 민감도</h2><p>공시 연간 매출과 이익률에 두 가정만 적용합니다. 대출한도·원리금 상환능력을 계산하는 기능은 아닙니다.</p></div><button class="secondary-button" type="button" id="run-stress">다시 계산</button></div>
+          <div class="section-heading"><div><p class="eyebrow">OPERATING SCENARIO</p><h2>영업실적 민감도</h2><p>매출·이익률 가정에 따른 영업이익 변화를 확인합니다.</p></div><button class="secondary-button" type="button" id="run-stress">다시 계산</button></div>
           <div class="stress-layout">
             <div class="stress-controls">
               <label><span>매출 변화 <b id="sales-shock-label">0%</b></span><input id="sales-shock" type="range" min="-30" max="30" value="0" step="1" /><small><em>악화 -30%</em><i>기준 0</i><em>개선 +30%</em></small></label>
-              <label><span>영업이익률 변화 <b id="margin-shock-label">0.0%p</b></span><input id="margin-shock" type="range" min="-20" max="20" value="0" step="0.5" /><small><em>악화 -20%p</em><i>기준 0</i><em>개선 +20%p</em></small><p>영업레버리지로 영업이익이 매출보다 크게 움직일 수 있어 범위를 넓게 설정했습니다.</p></label>
+              <label><span>영업이익률 변화 <b id="margin-shock-label">0.0%p</b></span><input id="margin-shock" type="range" min="-20" max="20" value="0" step="0.5" /><small><em>악화 -20%p</em><i>기준 0</i><em>개선 +20%p</em></small></label>
               <label hidden><span>조달금리 변화 <b id="rate-shock-label">0.00%p</b></span><input id="rate-shock" type="range" min="-5" max="5" value="0" step="0.25" /></label>
               <label hidden><span>매출채권 회수기간 변화 <b id="delay-label">0일</b></span><input id="collection-delay" type="range" min="-60" max="60" value="0" step="5" /></label>
               <details class="stress-advanced" hidden><summary>정밀 가정 입력</summary><div class="stress-advanced-fields"><label><input id="existing-variable-share" type="number" /></label><label><input id="credit-sales-share" type="number" /></label></div></details>
@@ -272,7 +276,7 @@
 
         <div class="workflow-page" data-workflow-page="inspection" hidden>
         <section class="panel" id="inspection">
-          <div class="section-heading"><div><p class="eyebrow">FIELD INSPECTION</p><h2>업종별 현장실사 기록</h2><p>항목별로 현장 판단뿐 아니라 관찰 사실, 증빙과 심사에 미치는 영향까지 기록합니다. 상태 선택만으로 확인 완료가 되지 않습니다.</p></div><div class="inspection-actions"><span class="count-badge" id="inspection-progress"></span><button class="secondary-button" id="print-inspection-form" type="button">빈 현장 점검지 인쇄·PDF</button></div></div>
+          <div class="section-heading"><div><p class="eyebrow">FIELD INSPECTION</p><h2>업종별 현장실사 기록</h2></div><div class="inspection-actions"><span class="count-badge" id="inspection-progress"></span><button class="secondary-button" id="print-inspection-form" type="button">빈 현장 점검지 인쇄·PDF</button></div></div>
           <div class="inspection-context" id="inspection-context"></div>
           <div class="utilization-box" id="utilization-box">
             <div><p class="eyebrow">SITE INPUT</p><h3>가동률 변화 입력</h3><p>현장 확인값을 분석 결과와 다시 연결합니다.</p></div>
@@ -313,7 +317,7 @@
   </div>
 
   <div id="inspection-print-sheet" hidden aria-hidden="true"></div>
-  <footer><p>CreditLens는 공개자료 기반의 교육·업무 보조 도구입니다. 신용등급, 승인·거절, 담보금액을 자동 확정하지 않습니다.</p></footer>
+  <footer><p>CreditLens · 공개자료 기반 검토. 승인·한도·담보 판단은 별도 심사 사항입니다.</p></footer>
   <script src="/app.js" type="module"></script>
 </body>
 </html>

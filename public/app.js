@@ -50,6 +50,13 @@ function formatSignedMoney(value, digits = 0) {
   return `${sign}${formatMoney(value, digits)}`;
 }
 
+function formatScenarioChange(value) {
+  if (!hasNumber(value)) return "자료없음";
+  const roundedEok = Math.round(Number(value) / 100_000_000);
+  if (roundedEok === 0) return "0억원";
+  return `${roundedEok > 0 ? "+" : ""}${roundedEok.toLocaleString("ko-KR")}억원`;
+}
+
 function formatNumber(value, digits = 1, suffix = "") {
   if (!hasNumber(value)) return "자료없음";
   return `${Number(value).toLocaleString("ko-KR", { maximumFractionDigits: digits, minimumFractionDigits: digits })}${suffix}`;
@@ -184,11 +191,18 @@ function setStatus(message, error = false) {
   $("#form-status").classList.toggle("error", error);
 }
 
+function setAnalyzing(active) {
+  $("#analysis-loading").hidden = !active;
+  $("#analysis-form").setAttribute("aria-busy", String(active));
+  document.body.classList.toggle("is-analyzing", active);
+}
+
 async function analyze(demo = false) {
   if (!demo && !state.selectedCompany) return setStatus("기업을 검색해 선택해 주세요.", true);
   setStatus("공식 자료를 수집하고 재무·현금흐름 관계를 계산하는 중입니다.");
   const submit = $("#analysis-form button[type='submit']");
   submit.disabled = true;
+  setAnalyzing(true);
   try {
     const analysis = await fetchJson("/api/analyze", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(requestPayload(demo)),
@@ -231,7 +245,7 @@ async function analyze(demo = false) {
     $("#overview").scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (error) {
     setStatus(error.message, true);
-  } finally { submit.disabled = false; }
+  } finally { submit.disabled = false; setAnalyzing(false); }
 }
 
 $("#analysis-form").addEventListener("submit", (event) => { event.preventDefault(); analyze(false); });
@@ -487,7 +501,7 @@ function decisionNarrative(view) {
     return "영업활동에서 현금이 유출됐습니다. 원리금 상환재원이 어디서 나오는지 확인하세요.";
   if (hasNumber(view.debtRatio) && hasNumber(view.previousDebtRatio) && view.debtRatio > view.previousDebtRatio + 5)
     return "부채비율이 상승했습니다. 기존 차입 만기와 신규 여신의 현금부담을 함께 확인하세요.";
-  return "공시상 실적 방향과 현금창출을 확인했습니다. 요청 자금별 상환재원은 별도로 검증해야 합니다.";
+  return "실적은 확인했습니다. 요청여신의 상환자료를 받으세요.";
 }
 
 function renderDecisionHome() {
@@ -511,13 +525,12 @@ function renderDecisionHome() {
   const working = Number(a.loanRequest.workingAmount) || 0;
   const facility = Number(a.loanRequest.facilityAmount) || 0;
   $("#decision-home").innerHTML = `
-    <article class="decision-lead"><div class="decision-lead-top"><span class="decision-badge">공개자료 기반 · 추가 확인</span>${reportLink}</div>
-      <h3>${escapeHtml(decisionNarrative(view))}</h3><p class="decision-period">${escapeHtml(view.previousPeriod)} → ${escapeHtml(view.period)} · ${escapeHtml(view.scope)}. 확인 전 승인·거절을 자동 판단하지 않습니다.</p>
-      <div class="decision-metrics">${metric("매출액", formatMoney(current?.revenue), revenueChange)}${metric("영업현금", formatMoney(current?.operatingCashFlow), cashChange)}${metric("부채비율", formatNumber(view.debtRatio, 1, "%"), debtChange)}</div>
+    <article class="decision-lead"><div class="decision-lead-top"><span class="decision-badge">${escapeHtml(view.scope)}</span>${reportLink}</div>
+      <h3>${escapeHtml(decisionNarrative(view))}</h3><p class="decision-period">${escapeHtml(view.previousPeriod)} → ${escapeHtml(view.period)}</p>
+      <div class="decision-metrics">${metric("매출액", formatMoney(current?.revenue), revenueChange)}${metric(view.interim ? "영업현금흐름 · 누적" : "영업현금흐름", formatMoney(current?.operatingCashFlow), cashChange)}${metric("부채비율", formatNumber(view.debtRatio, 1, "%"), debtChange)}</div>
+      <div class="decision-request"><span>요청여신</span><strong>${working ? `운전 ${working.toLocaleString("ko-KR")}억원` : ""}${working && facility ? " · " : ""}${facility ? `시설 ${facility.toLocaleString("ko-KR")}억원` : ""}</strong><button type="button" class="decision-link" data-open-detail="credit">자금 검토 →</button></div>
     </article>
-    <aside class="decision-actions"><div class="decision-section-title"><h3>담당자 확인 ${topPriorities.length}가지</h3><span>우선순위</span></div><ol>${topPriorities.map(([title, detail]) => `<li><b>${escapeHtml(title)}</b><span>${escapeHtml(detail)}</span></li>`).join("")}</ol><p>관찰 사실과 증빙을 남기면 심사의견에서 다시 검토합니다.</p></aside>
-    <article class="decision-secondary"><div class="decision-section-title"><h3>같은 기간 현금 비교</h3><span>${view.interim ? "누적 · 억원" : "연간 · 억원"}</span></div><div class="decision-compare"><div><small>${escapeHtml(view.previousPeriod)}</small><strong>${formatMoney(previous?.operatingCashFlow)}</strong></div><span aria-hidden="true">→</span><div><small>${escapeHtml(view.period)}</small><strong class="${cashDecline ? "tone-negative" : ""}">${formatMoney(current?.operatingCashFlow)}</strong></div></div><p>영업현금의 증감만으로 원인을 확정하지 않습니다. 투자·재무 현금흐름은 아래 상세에서 함께 봅니다.</p></article>
-    <article class="decision-secondary"><div class="decision-section-title"><h3>요청여신</h3><span>총 ${(working + facility).toLocaleString("ko-KR")}억원</span></div>${working ? `<div class="decision-loan-line"><span>운전자금 · ${a.loanRequest.workingTermMonths}개월</span><b>${working.toLocaleString("ko-KR")}억원</b></div>` : ""}${facility ? `<div class="decision-loan-line"><span>시설자금 · ${a.loanRequest.facilityTermMonths}개월</span><b>${facility.toLocaleString("ko-KR")}억원</b></div>` : ""}<button type="button" class="decision-link" data-open-detail="credit">용도별 검토 보기 →</button></article>`;
+    <aside class="decision-actions"><div class="decision-section-title"><h3>지금 받을 자료</h3><span>우선 ${topPriorities.length}건</span></div><ul>${topPriorities.map(([title, detail]) => `<li><b>${escapeHtml(title)}</b><span>${escapeHtml(detail)}</span></li>`).join("")}</ul></aside>`;
 }
 
 function renderEvidenceTrace() {
@@ -530,10 +543,10 @@ function renderEvidenceTrace() {
   const warnings = a.assessment?.redFlags || [];
   const check = warnings.flatMap((flag) => flag.checks || []).slice(0, 2);
   if (!check.length) check.push("현금흐름 조정항목", "차입금·담보 주석");
-  $("#evidence-trace").innerHTML = `<div class="trace-heading"><div><p class="eyebrow">SOURCE → CALCULATION → REVIEW</p><h2>원문·숫자·판단을 나란히</h2></div><p>같은 재무제표 범위와 기간을 대조합니다. 원인 가설은 증빙 전 확정하지 않습니다.</p></div><div class="trace-grid">
+  $("#evidence-trace").innerHTML = `<div class="trace-heading"><div><p class="eyebrow">SOURCE → CALCULATION → ACTION</p><h2>원문·숫자·필요자료</h2></div></div><div class="trace-grid">
     <article class="trace-panel"><h3><span>01</span> 공시 원문</h3>${sourceItem(view.period, current)}${view.interim ? sourceItem(view.previousPeriod, a.supplementary?.interimViews?.[state.statementScope]?.prior || {}) : sourceItem(view.previousPeriod, previous)}${view.interim && annual ? `<p class="trace-note">${escapeHtml(annual.period)} 연간 수치와 중간 누적 실적은 합산하지 않습니다.</p>` : ""}</article>
-    <article class="trace-panel"><h3><span>02</span> 추출·계산 수치</h3><div class="trace-number"><small>${escapeHtml(view.period)} 영업현금흐름</small><strong>${formatMoney(current?.operatingCashFlow)}</strong><em class="tone-${cashChange.tone}">${escapeHtml(cashChange.text)}</em></div><dl><div><dt>전기 같은 기간</dt><dd>${formatMoney(previous?.operatingCashFlow)}</dd></div><div><dt>매출액</dt><dd>${formatMoney(current?.revenue)}</dd></div><div><dt>부채비율</dt><dd>${formatNumber(view.debtRatio, 1, "%")}</dd></div></dl><p class="trace-note">증감률은 전기 영업현금이 양수일 때 (당기 ÷ 전기 − 1) × 100으로 계산합니다. 음수라면 금액과 전환 방향을 확인하세요.</p></article>
-    <article class="trace-panel"><h3><span>03</span> 판단·추가 증빙</h3><div class="trace-judgment">${escapeHtml(decisionNarrative(view))}</div><p class="trace-note">이 문장은 공시 수치의 방향을 설명합니다. 차주의 상환능력이나 위험 원인을 확정하지 않습니다.</p><h4>다음 확인자료</h4><ul>${check.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul><button type="button" class="decision-link" data-open-detail="risks">위험 수치 자세히 보기 →</button></article>
+    <article class="trace-panel"><h3><span>02</span> 추출·계산 수치</h3><div class="trace-number"><small>${escapeHtml(view.period)} 영업현금흐름</small><strong>${formatMoney(current?.operatingCashFlow)}</strong><em class="tone-${cashChange.tone}">${escapeHtml(cashChange.text)}</em></div><dl><div><dt>전기 같은 기간</dt><dd>${formatMoney(previous?.operatingCashFlow)}</dd></div><div><dt>매출액</dt><dd>${formatMoney(current?.revenue)}</dd></div><div><dt>부채비율</dt><dd>${formatNumber(view.debtRatio, 1, "%")}</dd></div></dl><details class="trace-formula"><summary>증감률 산식</summary><p>(당기 ÷ 전기 − 1) × 100 · 전기 영업현금이 양수일 때만 표시</p></details></article>
+    <article class="trace-panel"><h3><span>03</span> 담당자 확인</h3><div class="trace-judgment">${escapeHtml(decisionNarrative(view))}</div><h4>받을 자료</h4><ul class="trace-actions">${check.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul><button type="button" class="decision-link" data-open-detail="risks">위험 수치 보기 →</button></article>
   </div>`;
 }
 
@@ -851,10 +864,10 @@ function renderPerformanceConclusion(performance) {
     </article>`;
   }).join("");
   const statusChips = dimensions.map((item) => `<span class="conclusion-status ${escapeHtml(item.status.className)}">${escapeHtml(item.name)} <b>${escapeHtml(item.status.label)}</b></span>`).join("");
-  return `<div class="conclusion-head"><div><p class="eyebrow">경영성과 핵심 요약 · ${escapeHtml(periodLabel(records))}</p><h3>${headline}</h3><p>먼저 바뀐 숫자를 보고, 원인은 아래에서 자료로 검증합니다.</p></div><div class="conclusion-count ${summaryTone}"><strong>${summaryCount}</strong><span>${summaryLabel}</span></div></div>
+  return `<div class="conclusion-head"><div><p class="eyebrow">경영성과 · ${escapeHtml(periodLabel(records))}</p><h3>${headline}</h3></div><div class="conclusion-count ${summaryTone}"><strong>${summaryCount}</strong><span>${summaryLabel}</span></div></div>
     <div class="conclusion-statuses" aria-label="영역별 판정">${statusChips}</div>
     ${signalCards ? `<div class="conclusion-carousel"><button type="button" class="conclusion-scroll" data-conclusion-scroll="-1" aria-label="이전 경영성과 영역">‹</button><div class="conclusion-signals" tabindex="0" aria-label="경영성과 5개 영역, 좌우로 이동">${signalCards}</div><button type="button" class="conclusion-scroll" data-conclusion-scroll="1" aria-label="다음 경영성과 영역">›</button></div>` : `<p class="conclusion-empty">직전연도와 직접 비교할 수 있는 지표가 없습니다. 자료 범위와 최근 실적을 확인하세요.</p>`}
-    <div class="conclusion-footer"><p>이 화면은 전년 대비 변화 방향입니다. 원인 확정이나 대출 승인·거절 판단은 아닙니다.${improved ? ` 개선된 영역 ${improved}개도 아래에 함께 표시했습니다.` : ""}</p><details><summary>판정 기준 보기</summary><p>${escapeHtml(performance.rule || "직전연도 비교")}</p></details></div>`;
+    <div class="conclusion-footer"><details><summary>판정 기준 보기</summary><p>${escapeHtml(performance.rule || "직전연도 비교")}</p></details></div>`;
 }
 
 function renderPerformance() {
@@ -876,6 +889,13 @@ function renderPerformance() {
 }
 
 $("#performance-conclusion").addEventListener("click", (event) => {
+  const link = event.target.closest('a[href^="#performance-"]');
+  if (link) {
+    event.preventDefault();
+    $("#performance-deep-dive").open = true;
+    requestAnimationFrame(() => document.querySelector(link.getAttribute("href"))?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    return;
+  }
   const button = event.target.closest("button[data-conclusion-scroll]");
   if (!button) return;
   const carousel = $("#performance-conclusion .conclusion-signals");
@@ -887,7 +907,7 @@ function renderRisks() {
   $("#risk-count").textContent = `${risks.length}개 확인 항목`;
   $("#analysis-risk-tab-note").textContent = `${risks.length}개 연간 확인 수치 · 업종지표`;
   const hasCurrentInterim = latestInterimView(state.analysis)?.period?.startsWith(String(state.analysis.dataQuality?.requestedYear));
-  $("#risk-period-note").textContent = `${periodLabel()} 연간 공시 기반 규칙${hasCurrentInterim ? " · 위 반기 성과와 분리해 해석" : ""}`;
+  $("#risk-period-note").textContent = `${periodLabel()} 연간${hasCurrentInterim ? " · 최신 중간실적은 재무 탭" : ""}`;
   const thresholds = {
     "negative-cfo": "CFO < 0원", "profit-cfo-gap": "순이익 > 0원이며 CFO < 0원",
     "sales-cfo-divergence": "매출증가율 - CFO증가율 ≥ 15%p", "receivables-ahead": "채권증가율 - 매출증가율 ≥ 10%p",
@@ -905,7 +925,7 @@ function renderRisks() {
     const delta = Number.isFinite(risk.current) && Number.isFinite(risk.previous) ? risk.current - risk.previous : null;
     const period = periodLabel();
     const deltaDisplay = Number.isFinite(delta) ? (/비율|증가율/.test(risk.metric) ? changeText(delta, "%p") : `${delta > 0 ? "+" : ""}${valueText(risk, delta)}`) : "";
-    return `<article class="risk-card ${risk.level}"><div class="risk-bar"></div><div class="risk-title"><h3>${escapeHtml(risk.title)}</h3><span>${risk.level === "danger" ? "우선 확인" : risk.level === "warning" ? "주의 깊게 확인" : "추가 확인"}</span><div class="risk-evidence"><small>${escapeHtml(risk.metric)}</small><strong>${valueText(risk, risk.current)}</strong><p>${Number.isFinite(risk.previous) ? `${escapeHtml(period)} · ${valueText(risk, risk.previous)} → ${valueText(risk, risk.current)}${Number.isFinite(delta) ? ` (${deltaDisplay})` : ""}` : "현재 관찰값"}</p><em>관찰 기준 ${escapeHtml(thresholds[risk.id] || "규칙 임계치")} · 은행 승인 기준 아님</em></div></div><div><h4>왜 먼저 확인하는가</h4><p>${escapeHtml(risk.reason)}</p></div><div><h4>확인할 원자료</h4><div class="tag-list">${risk.checks.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div></div></article>`;
+    return `<article class="risk-card ${risk.level}"><div class="risk-bar"></div><div class="risk-title"><h3>${escapeHtml(risk.title)}</h3><span>${risk.level === "danger" ? "우선" : "확인"}</span><div class="risk-evidence"><small>${escapeHtml(risk.metric)}</small><strong>${valueText(risk, risk.current)}</strong><p>${Number.isFinite(risk.previous) ? `${escapeHtml(period)} · ${valueText(risk, risk.previous)} → ${valueText(risk, risk.current)}${Number.isFinite(delta) ? ` (${deltaDisplay})` : ""}` : "현재 관찰값"}</p></div></div><div class="risk-next"><h4>바로 받을 자료</h4><div class="tag-list">${risk.checks.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div></div><details class="risk-why"><summary>판정 근거·의미</summary><p>${escapeHtml(risk.reason)}</p><p>규칙: ${escapeHtml(thresholds[risk.id] || "임계치 확인")} · 은행 승인 기준 아님</p></details></article>`;
   }).join("") : `<div class="no-risk">현재 규칙에서 우선 확인할 변화는 발견되지 않았습니다. 공시 이후 실적과 비재무 정보는 별도로 확인해야 합니다.</div>`;
 }
 
@@ -942,8 +962,7 @@ function renderMacro() {
   const selectedIds = new Set(profile.macroIds || ["kr-base-rate"]);
   const macro = allMacro.filter((item) => selectedIds.has(item.id));
   $("#industry-profile").textContent = profile.label;
-  const pending = profile.id === "retail" ? "KOSIS 소매판매·온라인쇼핑 지표는 아직 미연결" : "업종 고유지표는 추가 연결 필요";
-  $("#industry-guide").innerHTML = `<div><b>${escapeHtml(profile.label)}에 맞춰 보는 지표</b><p>${profile.focus.map(escapeHtml).join(" · ")}</p><small>${escapeHtml(pending)} · 관련 없는 제조업·수출지표는 표시하지 않습니다.</small></div><span>현재 연결 가능한 지표 ${macro.length}개</span>`;
+  $("#industry-guide").innerHTML = `<div><b>${escapeHtml(profile.label)} 주요 지표</b><p>${profile.focus.map(escapeHtml).join(" · ")}</p></div><span>연결 ${macro.length}개</span>`;
   $("#macro-grid").innerHTML = macro.map((item) => {
     const delta = item.latest && item.previous ? item.latest.value - item.previous.value : null;
     const compact = item.latest?.date || "";
@@ -953,9 +972,9 @@ function renderMacro() {
     const ageDays = publishedDate ? Math.floor((basis - publishedDate) / 86_400_000) : Infinity;
     const timely = item.frequency === "D" ? ageDays <= 7 : ageDays <= 70;
     const narrative = macroNarrative(item, profile, delta);
-    return `<article class="macro-card"><div class="macro-card-head"><span class="macro-name">${escapeHtml(item.name)}</span><span class="freshness-tag ${timely ? "current" : "lagged"}">${timely ? "최신권" : "공표시차 확인"}</span></div><strong>${item.latest ? `${formatNumber(item.latest.value, 2)} ${escapeHtml(item.unit)}` : escapeHtml(item.status)}</strong><p>최신 수록 <b>${escapeHtml(published)}</b></p><p>${escapeHtml(item.source || "출처 확인 필요")} · ${item.paginationComplete === false ? "일부 수집" : "전체조회"}</p>${macroTrendMarkup(item)}<div class="delta">${Number.isFinite(delta) ? `직전 수록치 대비 ${macroDeltaText(delta, item.unit)}` : escapeHtml(item.message || "비교값 없음")}</div><div class="macro-relevance"><p><b>왜 확인하나</b>${escapeHtml(narrative.why)}</p><p><b>현재 우려·기회</b>${escapeHtml(narrative.concern)}</p><p><b>기업자료로 확인</b>${escapeHtml(narrative.verify)}</p></div></article>`;
+    return `<article class="macro-card"><div class="macro-card-head"><span class="macro-name">${escapeHtml(item.name)}</span><span class="freshness-tag ${timely ? "current" : "lagged"}">${timely ? "최신" : "시차 확인"}</span></div><div class="macro-value"><strong>${item.latest ? `${formatNumber(item.latest.value, 2)} ${escapeHtml(item.unit)}` : escapeHtml(item.status)}</strong><span class="delta">${Number.isFinite(delta) ? `직전 대비 ${macroDeltaText(delta, item.unit)}` : escapeHtml(item.message || "비교값 없음")}</span></div><p class="macro-source">${escapeHtml(published)} · ${escapeHtml(item.source || "출처 확인 필요")}${item.paginationComplete === false ? " · 일부 수집" : ""}</p><p class="macro-concern">${escapeHtml(narrative.concern)}</p><p class="macro-check"><b>확인자료</b> ${escapeHtml(narrative.verify)}</p><details class="macro-why"><summary>기업과 연결되는 이유</summary><p>${escapeHtml(narrative.why)}</p></details></article>`;
   }).join("");
-  if (!macro.length) $("#macro-grid").innerHTML = `<div class="no-risk">현재 이 업종에 맞는 최신 외부지표가 연결되지 않았습니다. 관련 없는 제조업·수출지표는 표시하지 않습니다.</div>`;
+  if (!macro.length) $("#macro-grid").innerHTML = `<div class="no-risk">연결된 외부지표가 없습니다.</div>`;
   const items = state.analysis.assessment.interpretations.filter((item) => {
     if (item.type !== "외부환경") return false;
     if (profile.id === "manufacturing" || profile.id === "general") return true;
@@ -1127,13 +1146,11 @@ $("#kosis-apply").addEventListener("click", () => {
 function renderIndustryEvidence() {
   const items = state.industryEvidence;
   $("#industry-evidence-count").textContent = items.length ? `· ${items.length}개 입력` : "";
-  if (items.length) $(".industry-evidence").open = true;
   $("#industry-evidence-list").innerHTML = items.length ? items.map((item, index) => {
     const change = item.latest - item.previous;
-    const favorable = item.direction === "up" ? change > 0 : change < 0;
-    const sourceStatus = item.sourceType === "kosis" ? "KOSIS 공식 수치" : "담당자 입력 · 원자료 미검증";
-    return `<article class="industry-evidence-item"><div><b>${escapeHtml(item.name)}</b><span>${escapeHtml(item.period)} · ${escapeHtml(item.unit || "단위 미기재")} · ${escapeHtml(sourceStatus)}</span><span>${escapeHtml(item.source)}</span></div><strong class="${item.comparisonWarning || change === 0 ? "tone-neutral" : favorable ? "tone-positive" : "tone-negative"}">${formatNumber(item.previous, 2)} → ${formatNumber(item.latest, 2)} ${escapeHtml(item.unit || "")} (${changeText(change, "")})</strong><p>기업 매출 노출 ${formatNumber(item.exposure, 1)}% · ${item.exposureBasis ? `노출 근거: ${escapeHtml(item.exposureBasis)}` : "노출 근거 미입력"} · ${item.comparisonWarning ? escapeHtml(item.comparisonWarning) : change === 0 ? "직전 수록시점 대비 변화 없음. 기업 영향은 별도 확인이 필요합니다." : `${favorable ? "유리한 방향" : "불리한 방향"}의 보조신호. 기업 영향은 별도 확인이 필요합니다.`}</p><button type="button" data-remove-industry="${index}" aria-label="지표 제거">×</button></article>`;
-  }).join("") : `<p class="no-risk">기업의 실제 업종 노출을 연결한 지표가 없습니다. 공통 거시지표만으로 업종위험을 단정하지 않습니다.</p>`;
+    const sourceStatus = item.sourceType === "kosis" ? "KOSIS 공식 수치" : "담당자 입력 · 검증 전";
+    return `<article class="industry-evidence-item"><div><b>${escapeHtml(item.name)}</b><span>${escapeHtml(item.period)} · ${escapeHtml(sourceStatus)}</span><span>${escapeHtml(item.source)}</span></div><strong class="tone-neutral">${formatNumber(item.previous, 2)} → ${formatNumber(item.latest, 2)} ${escapeHtml(item.unit || "")} (${changeText(change, "")})</strong><p>회사 매출노출 ${formatNumber(item.exposure, 1)}% · ${item.exposureBasis ? escapeHtml(item.exposureBasis) : "노출 근거 필요"}${item.comparisonWarning ? ` · ${escapeHtml(item.comparisonWarning)}` : ""}</p><button type="button" data-remove-industry="${index}" aria-label="지표 제거">×</button></article>`;
+  }).join("") : `<p class="no-risk">추가한 업종지표가 없습니다.</p>`;
 }
 
 $("#add-industry-evidence").addEventListener("click", () => {
@@ -1164,6 +1181,27 @@ function ruleList(rules = []) {
   return `<div class="loan-rule-list compact">${rules.map((rule) => `<details class="loan-rule"><summary><span>${escapeHtml(rule.title)}</span><strong>${escapeHtml(rule.result)}</strong><small>근거 보기</small></summary><p class="loan-rule-meaning">${escapeHtml(rule.interpretation || rule.explanation || "고객자료와 비교해 판단합니다.")}</p><div class="loan-rule-detail"><p><b>계산</b> ${escapeHtml(rule.calculation || rule.formula)}</p><p><b>의미</b> ${escapeHtml(rule.explanation || "계산 결과의 의미를 추가 확인합니다.")}</p><p><b>확인할 자료</b> ${escapeHtml(rule.check)}</p></div></details>`).join("")}</div>`;
 }
 
+function loanImpactSnapshot() {
+  const view = currentComparison();
+  const row = view.current || {};
+  const { totalAssets, totalLiabilities, equity } = row;
+  const balanced = [totalAssets, totalLiabilities, equity].every(Number.isFinite)
+    && equity > 0 && Math.abs(totalAssets - totalLiabilities - equity) <= Math.max(100_000_000, Math.abs(totalAssets) * 0.001);
+  const working = Math.max(0, Number(state.analysis.loanRequest.workingAmount) || 0);
+  const facility = Math.max(0, Number(state.analysis.loanRequest.facilityAmount) || 0);
+  const ratioFor = (amountEok) => balanced ? (totalLiabilities + amountEok * 100_000_000) / equity * 100 : null;
+  return {
+    basis: `${view.period} · ${view.scope}`,
+    ratioLabel: state.statementScope === "OFS" ? "차주 별도 부채비율" : "연결 그룹 부채비율",
+    existingOneYearDebt: Number.isFinite(row.shortTermDebt) ? row.shortTermDebt : null,
+    workingOneYearPrincipal: Number(state.analysis.loanRequest.workingTermMonths) <= 12 ? working : null,
+    beforeRatio: ratioFor(0),
+    workingRatio: ratioFor(working),
+    facilityRatio: ratioFor(facility),
+    combinedRatio: ratioFor(working + facility),
+  };
+}
+
 function renderLoans() {
   const support = state.analysis.decisionSupport;
   const a = state.analysis;
@@ -1188,24 +1226,24 @@ function renderLoans() {
     const capexCoverage = Number(latest.totalCapex) > 0 ? Number(latest.operatingCashFlow) / Number(latest.totalCapex) : null;
     $("#loan-grid").innerHTML = `<article class="loan-detail-card"><header><div><p class="eyebrow">FACILITY / LONG TERM</p><h3>시설자금 ${a.loanRequest.facilityAmount.toLocaleString("ko-KR")}억원</h3></div><span>${a.loanRequest.facilityTermMonths}개월</span></header><div class="loan-period-banner">아래 투자규모·영업활동현금흐름·부채비율과 자동 규칙은 모두 <strong>${escapeHtml(annualPeriod)}</strong> 기준입니다. ${comparison.interim ? `${escapeHtml(comparison.period)} 최신 실적은 위 요청여신 카드와 재무·성과 탭에서 별도로 확인합니다.` : ""}</div><div class="stance">${escapeHtml(support.facility.stance)}</div><div class="loan-metric-grid"><div><span>최근 유형·무형 CAPEX · 연간</span><strong>${formatMoney(latest.totalCapex)}</strong><small>투자현금흐름·주석과 교차확인</small></div><div><span>영업활동현금흐름 / CAPEX · 연간</span><strong>${Number.isFinite(capexCoverage) ? formatNumber(capexCoverage, 2, "배") : "자료없음"}</strong><small>내부창출 현금의 투자부담 흡수 정도</small></div><div><span>추가 차입 전 부채비율 · 연말</span><strong>${formatNumber(latest.debtRatio, 1, "%")}</strong><small>자기자금·담보와 함께 판단</small></div></div><h4>자동 적용된 검토 규칙 · ${escapeHtml(annualPeriod)}</h4>${ruleList(support.facility.appliedRules)}<div class="loan-columns"><div><h4>중점 판단</h4><ul><li>시설투자의 필요성과 기존시설 중복 여부</li><li>투자 후 생산·판매 증가의 객관적 근거</li><li>자기자금 투입과 비용초과 대응능력</li><li>시설 완료 후 장기 원리금 상환 가능성</li></ul></div><div><h4>필요 확인자료</h4><ul><li>계약서·견적서·인허가·공정계획</li><li>자기자금 조달 증빙</li><li>향후 3개년 추정손익과 자금수지</li><li>수주·판매계약 및 설비 잔존가치</li></ul></div></div></article>`;
   } else {
-    const newDebt = (a.loanRequest.workingAmount + a.loanRequest.facilityAmount) * 100_000_000;
-    const afterDebtRatio = Number.isFinite(latest.totalLiabilities) && Number.isFinite(latest.equity) && latest.equity > 0
-      ? (latest.totalLiabilities + newDebt) / latest.equity * 100 : null;
-    $("#loan-grid").innerHTML = `<article class="loan-detail-card integrated"><header><div><p class="eyebrow">INTEGRATED CREDIT VIEW</p><h3>운전자금과 시설자금 통합 검토</h3></div><span>총 ${(a.loanRequest.workingAmount + a.loanRequest.facilityAmount).toLocaleString("ko-KR")}억원</span></header><div class="loan-metric-grid"><div><span>운전자금</span><strong>${a.loanRequest.workingAmount.toLocaleString("ko-KR")}억원</strong><small>${a.loanRequest.workingTermMonths}개월 · 단기 회전재원</small></div><div><span>시설자금</span><strong>${a.loanRequest.facilityAmount.toLocaleString("ko-KR")}억원</strong><small>${a.loanRequest.facilityTermMonths}개월 · 장기 창출재원</small></div><div><span>신규여신 반영 부채비율</span><strong>${Number.isFinite(afterDebtRatio) ? formatNumber(afterDebtRatio, 1, "%") : "자료없음"}</strong><small>단순 가정: 신규여신 전액을 부채에 가산</small></div></div><div class="integrated-flow"><div><b>단기 검토</b><p>${escapeHtml(support.workingCapital.stance)}</p></div><span>＋</span><div><b>장기 검토</b><p>${escapeHtml(support.facility.stance)}</p></div><span>→</span><div><b>통합 확인</b><p>단기 회전자금이 시설투자 공백을 메우는 구조가 아닌지, 두 대출의 상환시점이 겹쳐 현금부담이 집중되지 않는지 확인합니다.</p></div></div><h4>운전자금 적용 규칙</h4>${ruleList(support.workingCapital.appliedRules)}<h4>시설자금 적용 규칙</h4>${ruleList(support.facility.appliedRules)}</article>`;
+    const impact = loanImpactSnapshot();
+    $("#loan-grid").innerHTML = `<article class="loan-detail-card integrated"><header><div><p class="eyebrow">INTEGRATED CREDIT VIEW</p><h3>두 자금 통합 검토</h3></div><span>총 ${(a.loanRequest.workingAmount + a.loanRequest.facilityAmount).toLocaleString("ko-KR")}억원</span></header><div class="loan-metric-grid"><div><span>운전자금</span><strong>${a.loanRequest.workingAmount.toLocaleString("ko-KR")}억원</strong><small>${a.loanRequest.workingTermMonths}개월</small></div><div><span>시설자금</span><strong>${a.loanRequest.facilityAmount.toLocaleString("ko-KR")}억원</strong><small>${a.loanRequest.facilityTermMonths}개월</small></div><div><span>${escapeHtml(impact.ratioLabel)} · ${escapeHtml(impact.basis)}</span><strong>${formatNumber(impact.beforeRatio, 2, "%")} → ${formatNumber(impact.combinedRatio, 2, "%")}</strong><small>두 요청액 전액을 부채에 가산</small></div></div><p class="loan-integrated-action"><b>다음 확인</b> 기존 차입 만기표·월별 현금수지에서 두 대출의 납부월 중첩 확인</p><div class="loan-rule-columns"><div><h4>운전자금 계산</h4>${ruleList(support.workingCapital.appliedRules)}</div><div><h4>시설자금 계산</h4>${ruleList(support.facility.appliedRules)}</div></div></article>`;
   }
-  $("#decision-disclaimer").textContent = support.disclaimer;
+  $("#decision-disclaimer").hidden = true;
 }
 
 function renderLoanOverview() {
   const a = state.analysis;
   const view = currentComparison();
   const { current, previous } = view;
+  const impact = loanImpactSnapshot();
   const requestedWorking = Number(a.loanRequest.workingAmount) || 0;
   const requestedFacility = Number(a.loanRequest.facilityAmount) || 0;
   const fact = (label, value, change) => `<div class="loan-glance-fact"><span>${label}</span><strong>${escapeHtml(value)}</strong><small class="tone-${change.tone}">${escapeHtml(change.text)} · 전년 ${view.interim ? "동기" : "대비"}</small></div>`;
-  const workingCard = requestedWorking ? `<article class="loan-glance-card"><div class="loan-glance-head"><div><span class="loan-term">단기 · ${a.loanRequest.workingTermMonths}개월</span><h3>운전자금</h3></div><strong>${requestedWorking.toLocaleString("ko-KR")}억원</strong></div><div class="loan-glance-facts">${fact("매출액", formatMoney(current?.revenue), amountChange(current?.revenue, previous?.revenue))}${fact(`영업활동현금흐름 · ${view.interim ? "중간 누적" : "연간"}`, formatMoney(current?.operatingCashFlow), amountChange(current?.operatingCashFlow, previous?.operatingCashFlow))}</div><p class="loan-glance-judgment"><b>우선 확인</b> · 매입부터 입금까지의 실제 회전기간이 신청 만기와 맞는지 확인해야 합니다.</p><p><b>받을 자료</b> · 월별 매입·판매·회수 계획, 매출채권 Aging</p><button type="button" data-loan-glance="working">운전자금 계산·규칙 보기 →</button></article>` : "";
-  const facilityCard = requestedFacility ? `<article class="loan-glance-card"><div class="loan-glance-head"><div><span class="loan-term">장기 · ${a.loanRequest.facilityTermMonths}개월</span><h3>시설자금</h3></div><strong>${requestedFacility.toLocaleString("ko-KR")}억원</strong></div><div class="loan-glance-facts">${fact("영업이익", formatMoney(current?.operatingProfit), amountChange(current?.operatingProfit, previous?.operatingProfit))}${fact("부채비율", formatNumber(view.debtRatio, 1, "%"), ratioChange(view.debtRatio, view.previousDebtRatio, true))}</div><p class="loan-glance-judgment"><b>우선 확인</b> · 신규 설비가 장기 원리금 상환재원을 만드는지 확인 전입니다.</p><p><b>받을 자료</b> · 설비 계약·견적, 자기자금, 수주·가동률 계획</p><button type="button" data-loan-glance="facility">시설자금 계산·규칙 보기 →</button></article>` : "";
-  $("#loan-overview").innerHTML = `<p class="loan-overview-period">${escapeHtml(view.period)} · ${escapeHtml(view.scope)} · ${view.interim ? "전년 동기" : "전년"} 비교. 공개자료의 관찰값이며 대출 승인·적정 금액 판단은 아닙니다.</p><div class="loan-glance-grid">${workingCard}${facilityCard}</div>${requestedWorking && requestedFacility ? `<div class="loan-combined"><strong>두 자금을 함께 보면</strong><span>운전자금 회수월과 시설자금 원리금 납부월이 겹치는지 확인</span><span>기존 차입 만기표를 받아 월별 현금부담 대조</span></div>` : ""}`;
+  const ratio = (after) => `<div class="loan-ratio-impact"><span>${escapeHtml(impact.ratioLabel)} · 전액 실행 직후</span><strong>${formatNumber(impact.beforeRatio, 2, "%")} → ${formatNumber(after, 2, "%")}</strong></div>`;
+  const workingCard = requestedWorking ? `<article class="loan-glance-card"><div class="loan-glance-head"><div><span class="loan-term">${a.loanRequest.workingTermMonths}개월</span><h3>운전자금</h3></div><strong>${requestedWorking.toLocaleString("ko-KR")}억원</strong></div><div class="loan-prelim"><span>현재 검토</span><strong>${escapeHtml(a.decisionSupport?.workingCapital?.stance || "회수재원 확인 전")}</strong></div><div class="loan-glance-facts">${fact(`영업활동현금흐름 · ${view.interim ? "중간 누적" : "연간"}`, formatMoney(current?.operatingCashFlow), amountChange(current?.operatingCashFlow, previous?.operatingCashFlow))}<div class="loan-glance-fact"><span>신규 운전자금 차입</span><strong>+${requestedWorking.toLocaleString("ko-KR")}억원</strong><small>${impact.workingOneYearPrincipal === null ? "12개월 내 상환액은 상환표 확인" : "전액 12개월 내 만기 · 기존 차입금은 주석 대조"}</small></div></div>${ratio(impact.workingRatio)}<div class="loan-next-action"><b>다음 자료</b><span>월별 매입·판매·입금 일정, 매출채권 Aging</span></div><button type="button" data-loan-glance="working">계산 근거 →</button></article>` : "";
+  const facilityCard = requestedFacility ? `<article class="loan-glance-card"><div class="loan-glance-head"><div><span class="loan-term">${a.loanRequest.facilityTermMonths}개월</span><h3>시설자금</h3></div><strong>${requestedFacility.toLocaleString("ko-KR")}억원</strong></div><div class="loan-prelim"><span>현재 검토</span><strong>${escapeHtml(a.decisionSupport?.facility?.stance || "투자 후 상환 검증 전")}</strong></div><div class="loan-glance-facts">${fact("영업이익", formatMoney(current?.operatingProfit), amountChange(current?.operatingProfit, previous?.operatingProfit))}<div class="loan-glance-fact"><span>상환재원</span><strong>투자 후 창출현금</strong><small>수주·가동률로 검증</small></div></div>${ratio(impact.facilityRatio)}<div class="loan-next-action"><b>다음 자료</b><span>설비 계약·자기자금·수주 및 가동계획</span></div><button type="button" data-loan-glance="facility">계산 근거 →</button></article>` : "";
+  $("#loan-overview").innerHTML = `<p class="loan-overview-period">${escapeHtml(impact.basis)}</p><div class="loan-glance-grid">${workingCard}${facilityCard}</div>${requestedWorking && requestedFacility ? `<div class="loan-combined"><strong>두 자금 동시 실행</strong><span>${escapeHtml(impact.ratioLabel)} ${formatNumber(impact.beforeRatio, 2, "%")} → ${formatNumber(impact.combinedRatio, 2, "%")}</span><span>운전 회수월·시설 원리금 납부월 중첩 확인</span></div>` : ""}<p class="loan-impact-assumption">부채비율: 요청액 전액 당일 실행 가정. 1년 내 금융차입 확정 총계와 시설 분할상환액은 차입 주석·상환표 대조 후 확인.</p>`;
 }
 
 $("#loan-overview").addEventListener("click", (event) => {
@@ -1213,7 +1251,8 @@ $("#loan-overview").addEventListener("click", (event) => {
   if (!button) return;
   state.loanView = button.dataset.loanGlance;
   renderLoans();
-  $("#loan-tabs").scrollIntoView({ behavior: "smooth", block: "start" });
+  $("#loan-detail-disclosure").open = true;
+  $("#loan-detail-disclosure").scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
 $("#loan-tabs").addEventListener("click", (event) => {
@@ -1352,7 +1391,8 @@ async function runStress() {
       return;
     }
     const calculations = result.calculationSteps.map((step) => `<p><b>${escapeHtml(step.label)}</b> · ${escapeHtml(step.substitution)} = ${formatMoney(step.result, 1)}</p>`).join("");
-    $("#stress-result").innerHTML = `<p class="eyebrow">${escapeHtml(result.label)}</p><h3>가정에 따른 변화</h3><div class="stress-metrics simple"><div><span>매출</span><small>공시 ${formatMoney(result.baseline.revenue)}</small><strong>${formatMoney(result.stressed.revenue)}</strong><em>${formatSignedMoney(result.changes.revenue)}</em></div><div><span>영업이익</span><small>공시 ${formatMoney(result.baseline.operatingProfit)}</small><strong>${formatMoney(result.stressed.operatingProfit)}</strong><em>${formatSignedMoney(result.changes.operatingProfit)}</em></div></div><p class="stress-comment">기존 영업이익률 ${formatNumber(result.baseline.operatingMargin, 1)}% → 가정 ${formatNumber(result.stressed.operatingMargin, 1)}%. ${escapeHtml(result.interpretation)}</p><details class="stress-calculations"><summary>계산 근거 보기</summary>${calculations}</details>`;
+    const impact = loanImpactSnapshot();
+    $("#stress-result").innerHTML = `<p class="eyebrow">${escapeHtml(state.analysis.records.at(-1)?.period || "")}년 연간 공시 · 영업실적 가정</p><h3>가정 후 영업이익 ${formatMoney(result.stressed.operatingProfit)}</h3><div class="stress-metrics simple"><div><span>매출</span><small>공시 ${formatMoney(result.baseline.revenue)}</small><strong>${formatMoney(result.stressed.revenue)}</strong><em>${formatScenarioChange(result.changes.revenue)}</em></div><div><span>영업이익</span><small>공시 ${formatMoney(result.baseline.operatingProfit)}</small><strong>${formatMoney(result.stressed.operatingProfit)}</strong><em>${formatScenarioChange(result.changes.operatingProfit)}</em></div></div><div class="stress-loan-impact"><b>요청여신 · 정태 계산</b><span>${escapeHtml(impact.ratioLabel)} ${formatNumber(impact.beforeRatio, 2, "%")} → ${formatNumber(impact.combinedRatio, 2, "%")} <small>${escapeHtml(impact.basis)}</small></span><strong>상환가능 금액·만기는 고객 자금수지 확인 전</strong></div><details class="stress-calculations"><summary>계산식·가정 보기</summary><p>영업이익률 ${formatNumber(result.baseline.operatingMargin, 1)}% → ${formatNumber(result.stressed.operatingMargin, 1)}% · 신규대출 이자·원금 미반영</p>${calculations}</details>`;
     try { renderReport(); } catch (reportError) { console.error("리포트 갱신 오류", reportError); }
   } catch (error) {
     if (runId === stressRunId) $("#stress-result").innerHTML = `<div class="stress-error"><b>재계산하지 못했습니다.</b><p>${escapeHtml(error.message)}</p></div>`;

@@ -39,6 +39,9 @@ document.querySelectorAll("[data-manual-nav]").forEach((element) => element.addE
   event.preventDefault(); showManualPage(element.dataset.manualNav);
 }));
 showManualPage(location.hash.replace("#manual-", ""));
+document.addEventListener("click", (event) => {
+  if (event.target.closest('a[href="#manual-workspace"]')) $("#manual-workspace").open = true;
+});
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]);
@@ -74,6 +77,68 @@ function metricDelta(metric) {
   if (!Number.isFinite(delta)) return "비교자료 없음";
   const suffix = metric.unit === "%" || metric.unit === "%p" ? "%p" : metric.unit;
   return `${delta > 0 ? "+" : ""}${delta.toLocaleString("ko-KR", { maximumFractionDigits: 1 })}${suffix}`;
+}
+
+function reviewState(analysis) {
+  const review = analysis.manualReview || {};
+  const issues = Array.isArray(review.issues) ? review.issues : [];
+  const changes = Array.isArray(review.changes) ? review.changes : [];
+  const blocking = issues.filter((issue) => issue.severity === "blocking");
+  const missingCorrectionSources = changes.filter((change) => !String(change.page || "").trim() || !String(change.note || "").trim());
+  const sourceRecorded = review.sourceReview?.confirmed === true;
+  return { issues, changes, blocking, missingCorrectionSources, sourceRecorded, sourceReady: sourceRecorded && missingCorrectionSources.length === 0 };
+}
+
+function renderManualDecisionBoard(analysis) {
+  const target = $("#manual-decision-board");
+  const { issues, blocking, missingCorrectionSources, sourceRecorded, sourceReady } = reviewState(analysis);
+  const records = Array.isArray(analysis.records) ? analysis.records : [];
+  const latest = records.at(-1) || {}, previous = records.at(-2) || {};
+  const dimensions = Array.isArray(analysis.performance?.dimensions) ? analysis.performance.dimensions : [];
+  const primary = blocking[0];
+  const issueRow = records.find((row) => row.period === primary?.period);
+  const components = primary?.type === "current-assets-components" && [issueRow?.cash, issueRow?.accountsReceivable, issueRow?.inventory].every(Number.isFinite)
+    ? issueRow.cash + issueRow.accountsReceivable + issueRow.inventory : null;
+  const priority = primary ? {
+    label: "먼저 고칠 숫자",
+    title: `${primary.period || "입력자료"} · ${primary.title}`,
+    detail: Number.isFinite(components) && Number.isFinite(issueRow?.currentAssets)
+      ? `유동자산 ${money(issueRow.currentAssets)} < 현금·채권·재고 ${money(components)}. 원본의 정확한 계정값과 범위를 확인하세요.`
+      : primary.detail,
+    href: "#manual-review", action: "수정 입력",
+  } : missingCorrectionSources.length ? {
+    label: "수정 출처 확인",
+    title: `수정값 ${missingCorrectionSources.length}건의 원문 페이지·근거가 비었습니다`,
+    detail: "검산 통과는 원본 일치의 증거가 아닙니다. 수정한 값을 원문과 다시 대조하세요.",
+    href: "#manual-review", action: "수정 이력 확인",
+  } : !sourceRecorded ? {
+    label: "다음 확인",
+    title: "계산 완료 · 원본 숫자 대조 전",
+    detail: "기간·계정명·금액·단위를 원본과 대조하고 문서·페이지를 기록하세요.",
+    href: "#manual-workspace", action: "원본 대조 기록",
+  } : {
+    label: "다음 확인",
+    title: "신청자금의 회수·상환 경로 확인",
+    detail: "운전자금은 매입부터 입금까지, 시설자금은 투자 후 매출전환까지 확인합니다.",
+    href: "#manual-purpose-review", action: "여신별 근거",
+  };
+  const moneyCard = (label, value, prior, signed = false) => `<div><span>${label}</span><strong>${signed ? signedMoney(value) : money(value)}</strong><small>${comparisonText(value, prior)}</small></div>`;
+  const request = analysis.loanRequest || {};
+  const purposeRows = [
+    Number(request.workingAmount) > 0 ? `<div><b>운전자금 ${Number(request.workingAmount).toLocaleString("ko-KR")}억원</b><span>${escapeHtml(request.workingTermMonths || 12)}개월 · 회수일정·채권 연령표</span></div>` : "",
+    Number(request.facilityAmount) > 0 ? `<div><b>시설자금 ${Number(request.facilityAmount).toLocaleString("ko-KR")}억원</b><span>${escapeHtml(request.facilityTermMonths || 60)}개월 · 설비계약·수주·가동률</span></div>` : "",
+  ].filter(Boolean);
+  const requestedTotal = Math.max(0, Number(request.workingAmount) || 0) + Math.max(0, Number(request.facilityAmount) || 0);
+  const balanced = [latest.totalAssets, latest.totalLiabilities, latest.equity].every(Number.isFinite)
+    && latest.equity > 0
+    && Math.abs(latest.totalAssets - latest.totalLiabilities - latest.equity) <= Math.max(100_000_000, Math.abs(latest.totalAssets) * 0.001);
+  const ratioImpact = !blocking.length && balanced && requestedTotal > 0
+    ? `${(latest.totalLiabilities / latest.equity * 100).toFixed(2)}% → ${((latest.totalLiabilities + requestedTotal * 100_000_000) / latest.equity * 100).toFixed(2)}%`
+    : "검산 후 표시";
+  target.hidden = false;
+  target.innerHTML = `<div class="manual-board-top"><div><p class="eyebrow">CREDIT REVIEW / AT A GLANCE</p><h2>${escapeHtml(analysis.company?.name || "기업")} · 핵심 검토</h2><p>${escapeHtml(latest.period || "최근")}년 ${analysis.primaryFsDiv === "CFS" ? "연결 · 그룹" : "별도 · 차주"} · ${escapeHtml(previous.period || "전기")} → ${escapeHtml(latest.period || "당기")} · 억원</p></div><div class="manual-board-gates"><span class="${blocking.length ? "needs-work" : "checked"}">입력값 검산 <b>${blocking.length ? `불일치 ${blocking.length}건` : "통과"}</b></span><span class="${sourceReady ? "checked" : "needs-review"}">원본 대조 <b>${sourceReady ? "담당자 기록" : missingCorrectionSources.length ? `수정 근거 ${missingCorrectionSources.length}건 필요` : "미완료"}</b></span></div></div>
+    <div class="manual-board-body"><div class="manual-board-left"><div class="manual-board-priority"><small>${priority.label}</small><strong>${escapeHtml(priority.title)}</strong><p>${escapeHtml(priority.detail)}</p><a href="${priority.href}">${priority.action} →</a></div><div class="manual-board-numbers">${moneyCard("매출", latest.revenue, previous.revenue)}${moneyCard("영업이익", latest.operatingProfit, previous.operatingProfit)}${moneyCard("영업현금흐름", latest.operatingCashFlow, previous.operatingCashFlow, true)}<div><span>부채비율</span><strong>${Number.isFinite(latest.debtRatio) ? `${latest.debtRatio.toFixed(1)}%` : "자료없음"}</strong><small>${Number.isFinite(latest.debtRatio) && Number.isFinite(previous.debtRatio) ? `전년 대비 ${(latest.debtRatio - previous.debtRatio) > 0 ? "+" : ""}${(latest.debtRatio - previous.debtRatio).toFixed(1)}%p` : "비교자료 없음"}</small></div></div></div><aside class="manual-board-right"><h3>신청자금 · 받을 자료</h3>${purposeRows.join("") || "<p>신청자금을 입력하면 검토 항목이 나옵니다.</p>"}<a href="#manual-purpose-review">운전·시설 분리 검토 →</a>${requestedTotal ? `<div class="manual-board-impact"><span>요청액 전액 실행 시 부채비율</span><strong>${ratioImpact}</strong><small>${blocking.length || !balanced ? "입력값 검산 필요" : sourceReady ? "담당자 대조 기록" : "잠정 계산"} · 현금·자본 변동 없음</small></div>` : ""}</aside></div>
+    <div class="manual-board-dimensions"><span>경영성과</span>${dimensions.map((item) => `<a href="#manual-performance" class="${blocking.length || !sourceReady ? "unknown" : escapeHtml(item.status?.className || "unknown")}">${escapeHtml(item.name)} <b>${blocking.length ? "보류" : !sourceReady ? `${escapeHtml(item.status?.label || "자료부족")}·잠정` : escapeHtml(item.status?.label || "자료부족")}</b></a>`).join("")}</div><p class="manual-board-footnote">검산은 입력값 사이의 관계만 확인합니다. 원본 PDF와의 일치는 담당자 대조 기록으로 따로 표시합니다.${issues.length > blocking.length ? ` <a href="#manual-review">추가 원문 확인 ${issues.length - blocking.length}건</a>` : ""}</p>`;
 }
 
 function inspectionComplete(answer = {}) {
@@ -187,9 +252,9 @@ function renderPerformanceMetric(metric, records, blocked) {
 function renderPurposeCard(analysis, key, label, term, blocked) {
   const item = analysis.decisionSupport?.[key];
   if (!item?.requested) return "";
-  const question = key === "workingCapital" ? "실제 매입→판매→회수 기간 안에 상환할 수 있는가" : "투자 집행→가동→매출전환 이후 원리금을 감당할 수 있는가";
+  const action = key === "workingCapital" ? "받을 자료 · 월별 매입·판매·입금, 채권 연령표" : "받을 자료 · 설비 계약·집행표, 수주·가동계획";
   const rules = Array.isArray(item.appliedRules) ? item.appliedRules : [];
-  return `<article class="manual-purpose"><div class="manual-purpose-head"><div><small>${key === "workingCapital" ? "SHORT TERM / 회전자금" : "LONG TERM / 투자자금"}</small><h3>${label}</h3></div><strong>${Number(item.requested).toLocaleString("ko-KR")}억원</strong></div><p class="manual-purpose-term">신청기간 ${Number.isFinite(Number(term)) ? `${Number(term).toLocaleString("ko-KR")}개월` : "미입력"} · ${escapeHtml(question)}</p><p class="manual-purpose-stance">${blocked ? "필수 오류 해소 전 · 잠정 수치만 표시" : escapeHtml(item.stance)}. 신청액의 적정성이나 승인조건을 자동 확정하지 않습니다.</p><div class="manual-rule-list">${rules.map((rule, index) => `<details class="manual-rule" ${index === 0 ? "open" : ""}><summary><span><b>${escapeHtml(rule.title)}</b><small>${escapeHtml(rule.formula)}</small></span><strong>${escapeHtml(rule.result)}</strong></summary><div><p><b>실제 계산</b> ${escapeHtml(rule.calculation)}</p><p><b>현재 해석</b> ${escapeHtml(rule.interpretation)}</p><p><b>담당자 확인</b> ${escapeHtml(rule.check)}</p><p class="manual-rule-caveat">${escapeHtml(rule.explanation)}</p></div></details>`).join("")}</div></article>`;
+  return `<article class="manual-purpose"><div class="manual-purpose-head"><div><small>${key === "workingCapital" ? "SHORT TERM" : "LONG TERM"}</small><h3>${label}</h3></div><strong>${Number(item.requested).toLocaleString("ko-KR")}억원</strong></div><p class="manual-purpose-term">${Number.isFinite(Number(term)) ? `${Number(term).toLocaleString("ko-KR")}개월` : "기간 미입력"} · ${blocked ? "입력 오류 수정 전" : escapeHtml(item.stance)}</p><p class="manual-purpose-action">${action}</p><div class="manual-rule-list">${rules.map((rule) => `<details class="manual-rule"><summary><span><b>${escapeHtml(rule.title)}</b></span><strong>${escapeHtml(rule.result)}</strong></summary><div><p><b>계산</b> ${escapeHtml(rule.calculation)}</p><p><b>확인</b> ${escapeHtml(rule.check)}</p><details><summary>해석·산식</summary><p>${escapeHtml(rule.interpretation)}</p><p>${escapeHtml(rule.formula)} · ${escapeHtml(rule.explanation)}</p></details></div></details>`).join("")}</div></article>`;
 }
 
 function renderManualScenarioResult(result) {
@@ -207,7 +272,7 @@ function renderManualScenarioResult(result) {
     ["매출액", result.baseline.revenue, result.stressed.revenue, result.changes.revenue],
     ["영업이익", result.baseline.operatingProfit, result.stressed.operatingProfit, result.changes.operatingProfit],
   ];
-  target.innerHTML = `<div class="manual-scenario-metrics">${rows.map(([name, base, assumed, gap]) => `<article><span>${name}</span><small>제출값 ${money(base)}</small><strong>가정값 ${money(assumed)}</strong><em>차이 ${signedMoney(gap)}</em></article>`).join("")}</div><p class="manual-scenario-margin">영업이익률 ${metricValue(result.baseline.operatingMargin, "%")} → ${metricValue(result.stressed.operatingMargin, "%")} · 고객 제출 연간 실적을 기준으로 한 산술 예시입니다.</p><details class="manual-scenario-proof"><summary>계산식·대입값 보기</summary>${(result.calculationSteps || []).map((step) => `<p><b>${escapeHtml(step.label)}</b> · ${escapeHtml(step.formula)}<br>${escapeHtml(step.substitution)} = ${money(step.result)}</p>`).join("")}</details><p class="manual-method-note">신규대출 원리금, 실제 영업현금, 승인가능 금액은 계산하지 않습니다. 매출·이익이 늘어도 상환능력 개선을 자동 확정하지 않습니다.</p>`;
+  target.innerHTML = `<div class="manual-scenario-metrics">${rows.map(([name, base, assumed, gap]) => `<article><span>${name}</span><strong>${money(assumed)}</strong><em>${signedMoney(gap)} · 제출 ${money(base)}</em></article>`).join("")}</div><p class="manual-scenario-margin">영업이익률 ${metricValue(result.baseline.operatingMargin, "%")} → ${metricValue(result.stressed.operatingMargin, "%")} · 매출·이익률 단순 가정</p><details class="manual-scenario-proof"><summary>계산식·대입값</summary>${(result.calculationSteps || []).map((step) => `<p><b>${escapeHtml(step.label)}</b> · ${escapeHtml(step.formula)}<br>${escapeHtml(step.substitution)} = ${money(step.result)}</p>`).join("")}</details><p class="manual-method-note">신규대출 이자·원금과 승인가능액은 반영하지 않습니다.</p>`;
 }
 
 async function calculateManualScenario() {
@@ -256,17 +321,16 @@ function renderResult(analysis) {
   const hypotheses = analysis.performance?.hypotheses || [];
   $("#manual-results").hidden = false;
   $("#manual-analysis-empty").hidden = true;
-  $("#manual-results").innerHTML = `<div class="manual-result-head"><div><span class="manual-badge">${escapeHtml(analysis.manualReview?.sourceStatus || "고객제출 CSV · 원본 대조 전")}${blocked ? " · 오류 해결 전" : ""}</span><h2>${escapeHtml(analysis.company?.name)} · 차주 상환능력</h2><p>${escapeHtml(records[0]?.period)}~${escapeHtml(latest.period)}년 ${analysis.primaryFsDiv === "CFS" ? "연결 · 그룹" : "별도 · 차주"} 입력자료 · 최근 비교 ${escapeHtml(previous.period)} → ${escapeHtml(latest.period)} · 단위 억원</p></div></div>
-    ${blocked ? `<p class="manual-blocked-note"><b>필수 원본 대조 과제 ${issues.filter((item) => item.severity === "blocking").length}건</b> · 아래 숫자는 고객 제출 CSV로 계산한 잠정값입니다. 개선·약화 및 여신 판단은 오류 수정·재계산 전까지 보류합니다. <a href="#manual-review">수정 과제로 이동 →</a></p>` : ""}
-    <div class="manual-kpis"><article><span>매출액</span><strong>${money(latest.revenue)}</strong><small>${comparisonText(latest.revenue, previous.revenue)}</small></article><article><span>영업이익</span><strong>${money(latest.operatingProfit)}</strong><small>${comparisonText(latest.operatingProfit, previous.operatingProfit)}</small></article><article><span>영업활동현금흐름</span><strong>${signedMoney(latest.operatingCashFlow)}</strong><small>${comparisonText(latest.operatingCashFlow, previous.operatingCashFlow)}</small></article><article><span>부채비율</span><strong>${Number.isFinite(latest.debtRatio) ? `${latest.debtRatio.toFixed(1)}%` : "자료없음"}</strong><small>${escapeHtml(latest.period)}년 부채총계 ÷ 자본총계 × 100 · ${blocked ? "검증 대기" : "잠정"}</small></article></div>
-    <section class="manual-subsection" id="manual-financials"><div class="section-heading compact"><div><p class="eyebrow">BORROWER FINANCIALS / 3 YEARS</p><h3>3개년 재무·현금흐름</h3><p>최신 연도를 왼쪽에 두고 손익·재무상태·세 활동 현금흐름을 함께 봅니다.</p></div></div>${renderStatementTable(records, coreRows)}<details class="manual-full-accounts"><summary>고객 제출 전체 계정 ${detailRows.length}개 보기</summary>${renderStatementTable(records, detailRows)}</details><div class="manual-validation"><h4>입력값 자동 검산</h4><ul>${validations.map((item) => `<li>${escapeHtml(item.period)}년 · 자산=부채+자본 <b>${escapeHtml(item.balanceSheet)}</b> · 세 활동 현금흐름과 현금증감 <b>${escapeHtml(item.cashFlow)}</b></li>`).join("") || "<li>검산 자료 없음</li>"}</ul><p>현금흐름 합계와 현금잔액 증감은 환율효과·연결범위 등 조정항목 때문에 다를 수 있습니다. 차이는 원문에서 확인합니다.</p></div></section>
-    <section class="manual-subsection" id="manual-cashflow"><div class="section-heading compact"><div><p class="eyebrow">THREE CASH-FLOW ACTIVITIES</p><h3>현금은 어디에서 들어오고 나갔나</h3><p>가운데 0축 기준 오른쪽은 유입, 왼쪽은 유출입니다. 투자·재무활동의 부호만으로 좋고 나쁨을 판정하지 않습니다.</p></div></div><div class="manual-cash-years">${[...records].reverse().map((row) => renderCashFlowYear(row, maxCashFlow)).join("")}</div><div class="manual-cash-bridge"><div><span>${escapeHtml(latest.period)}년 세 활동 합계</span><strong>${signedMoney(latest.cashFlowSubtotal)}</strong></div><div><span>기말 현금 증감 · ${escapeHtml(previous.period)} → ${escapeHtml(latest.period)}</span><strong>${signedMoney(latest.cashBalanceChange)}</strong></div><div><span>차이 · 원문 조정항목 확인</span><strong>${signedMoney(latest.cashFlowReconciliationGap)}</strong></div></div><div class="manual-cash-insights">${cashInsights.map((insight) => `<article><b>${escapeHtml(insight.title)}</b><p>${escapeHtml(insight.meaning)}</p><small>확인자료: ${escapeHtml((insight.checks || []).join(" · "))}</small></article>`).join("")}</div></section>
-    <section class="manual-subsection manual-performance" id="manual-performance"><div class="section-heading compact"><div><p class="eyebrow">MANAGEMENT PERFORMANCE</p><h3>경영성과 5개 영역</h3><p>${escapeHtml(previous.period)}년 → ${escapeHtml(latest.period)}년 · 모든 방향 판정은 입력값과 원본 대조 상태를 전제로 합니다.</p></div></div><div class="manual-dimension-grid">${dimensions.map((item) => { const keyMetric = (item.metrics || []).find((metric) => metric.trend?.className === "weakening") || (item.metrics || []).find((metric) => Number.isFinite(metric.latest)) || (item.metrics || [])[0]; return `<button type="button" class="manual-dimension ${blocked ? "unknown" : escapeHtml(item.status?.className || "unknown")}" data-manual-dimension="${escapeHtml(item.id)}"><span>${escapeHtml(item.name)}</span><strong>${blocked ? "판정 보류" : escapeHtml(item.status?.label || "자료부족")}</strong><small>${keyMetric ? `${escapeHtml(keyMetric.label)} ${metricValue(keyMetric.latest, keyMetric.unit)}` : "비교자료 없음"}</small><em>지표·계산 근거 보기 →</em></button>`; }).join("")}</div><div class="manual-performance-details">${dimensions.map((item) => `<details id="manual-detail-${escapeHtml(item.id)}"><summary><b>${escapeHtml(item.name)}</b><span>${escapeHtml(item.question)}</span><strong>${blocked ? "검증 전" : escapeHtml(item.status?.label || "자료부족")}</strong></summary><div class="manual-metric-list">${(item.metrics || []).map((metric) => renderPerformanceMetric(metric, records, blocked)).join("")}</div></details>`).join("")}</div><p class="manual-method-note">자동 분류 기준: ${escapeHtml(analysis.performance?.rule || "전년 비교 가능 수치만 방향을 분류합니다.")} 고객 제출자료는 공시 원문 자동 검증이 아닙니다.</p></section>
-    <section class="manual-subsection manual-diagnosis"><div class="section-heading compact"><div><p class="eyebrow">CAUSES TO VERIFY</p><h3>변화 원인 가설과 확인 순서</h3><p>관찰된 수치와 가능한 원인을 분리합니다. 아래 원인은 확정 사실이 아닙니다.</p></div></div>${blocked ? `<p class="manual-blocked-note">입력 불일치를 먼저 해소한 뒤 가설을 다시 계산합니다.</p>` : `<div class="manual-hypothesis-grid">${hypotheses.slice(0, 4).map((item) => `<article><small>${escapeHtml(item.priority)}</small><h4>${escapeHtml(item.category)}</h4><p><b>관찰</b> ${escapeHtml(item.observation)}</p><p><b>가설</b> ${escapeHtml(item.hypothesis)}</p><ul>${(item.verificationSteps || []).map((step) => `<li><b>${escapeHtml(step.title)}</b> · ${escapeHtml(step.data)}<br>${escapeHtml(step.question)}</li>`).join("")}</ul></article>`).join("")}</div>`}</section>
-    <section class="manual-subsection manual-business-evidence"><div class="section-heading compact"><div><p class="eyebrow">BUSINESS / SOURCE FIRST</p><h3>사업·감사 근거</h3><p>고객 제출자료·면담을 담당자가 적은 내용입니다. 원문 페이지가 있어도 플랫폼이 내용의 진위를 검증한 것은 아닙니다.</p></div></div><div class="manual-audit-row"><b>감사의견 입력</b><strong>${escapeHtml(audit.opinion || "미확인")}</strong><span>${escapeHtml(audit.reportDate || "보고서일 미입력")} · ${escapeHtml(audit.sourcePage || "원문 위치 미입력")}</span></div>${businessEvidence.length ? `<div class="manual-business-grid">${businessEvidence.map((item) => `<article><h4>${escapeHtml(item.label)}</h4><p>${escapeHtml(item.text)}</p><small>담당자 입력 · 출처: ${escapeHtml(item.source || "미기재")}</small></article>`).join("")}</div>` : `<p class="manual-empty-inline">사업·거래처·경영진·업종 노출 설명이 아직 입력되지 않았습니다. 고객 자료와 면담 근거를 확인하면 보고서에 함께 담을 수 있습니다.</p>`}</section>
-    <section class="manual-subsection" id="manual-purpose-review"><div class="section-heading compact"><div><p class="eyebrow">LOAN PURPOSE ANALYSIS</p><h3>요청 여신별 예비검토</h3><p>운전자금은 회전·단기 회수재원, 시설자금은 투자성과·장기 현금창출력을 별도로 검토합니다.</p></div></div><div class="manual-purpose-grid">${renderPurposeCard(analysis, "workingCapital", "운전자금", analysis.loanRequest?.workingTermMonths, blocked)}${renderPurposeCard(analysis, "facility", "시설자금", analysis.loanRequest?.facilityTermMonths, blocked)}${!analysis.decisionSupport?.workingCapital?.requested && !analysis.decisionSupport?.facility?.requested ? `<p class="manual-empty-inline">요청금액을 입력하면 자금용도별 검토 근거가 나옵니다.</p>` : ""}</div></section>
-    <section class="manual-subsection manual-scenario" id="manual-scenario"><div class="section-heading compact"><div><p class="eyebrow">SIMPLE SENSITIVITY / NOT A LOAN LIMIT</p><h3>매출·영업이익 단순 민감도</h3><p>기업금융 담당자가 추가 서류 없이 매출 변화와 영업이익률 변화만 가정해 볼 수 있습니다. 미래 예측·상환한도는 아닙니다.</p></div></div><div class="manual-scenario-controls"><label>매출 변화 <output id="manual-sales-value">기준 0%</output><input id="manual-sales-shock" type="range" min="-30" max="30" step="1" value="0" /><small>감소 -30% · 기준 0 · 증가 +30%</small></label><label>영업이익률 변화 <output id="manual-margin-value">기준 0.0%p</output><input id="manual-margin-shock" type="range" min="-20" max="20" step="0.5" value="0" /><small>하락 -20%p · 기준 0 · 상승 +20%p</small></label><button class="secondary-button" id="manual-scenario-recalculate" type="button">가정값 재계산</button></div><div id="manual-scenario-result" aria-live="polite"><p class="manual-empty-inline">매출과 영업이익률의 변화 가정을 계산하는 중입니다.</p></div></section>
-    <p class="manual-result-note">PDF ${pdfEvidence.length}건은 이 브라우저 탭에서만 원본 대조용으로 선택했습니다. 파일 내용은 서버에 전송·저장하지 않았고, 숫자도 PDF에서 자동 추출하지 않았습니다. CSV 계정 정의·감사의견·주석상 차입만기·담보·보증 및 월별 현금수지는 담당자가 원본과 대조해야 합니다. 이 결과는 승인·거절이나 적정 대출금액 제안이 아닙니다.</p>`;
+  $("#manual-results").innerHTML = `<div class="manual-result-head"><div><p class="eyebrow">BORROWER DETAIL</p><h2>${escapeHtml(analysis.company?.name)} · 계산 근거</h2><p>${escapeHtml(records[0]?.period)}~${escapeHtml(latest.period)}년 ${analysis.primaryFsDiv === "CFS" ? "연결 · 그룹" : "별도 · 차주"} · 억원</p></div></div>
+    ${blocked ? `<p class="manual-blocked-note"><b>검산 불일치 ${issues.filter((item) => item.severity === "blocking").length}건</b> · 방향 판정 보류 <a href="#manual-review">입력값 확인 →</a></p>` : ""}
+    <section class="manual-subsection" id="manual-financials"><div class="section-heading compact"><div><p class="eyebrow">BORROWER FINANCIALS</p><h3>3개년 주요 재무</h3></div></div>${renderStatementTable(records, coreRows)}<details class="manual-full-accounts"><summary>전체 계정 ${detailRows.length}개 · 입력값 보기</summary>${renderStatementTable(records, detailRows)}</details><details class="manual-validation"><summary>연도별 자동 검산 결과</summary><ul>${validations.map((item) => `<li>${escapeHtml(item.period)}년 · 자산=부채+자본 <b>${escapeHtml(item.balanceSheet)}</b> · 현금흐름 대조 <b>${escapeHtml(item.cashFlow)}</b></li>`).join("") || "<li>검산 자료 없음</li>"}</ul><p>현금흐름 차이는 원문 조정항목을 확인합니다.</p></details></section>
+    <section class="manual-subsection" id="manual-cashflow"><div class="section-heading compact"><div><p class="eyebrow">CASH FLOW / 3 YEARS</p><h3>영업·투자·재무 현금흐름</h3></div></div><div class="manual-cash-years">${[...records].reverse().map((row) => renderCashFlowYear(row, maxCashFlow)).join("")}</div><div class="manual-cash-bridge"><div><span>${escapeHtml(latest.period)}년 세 활동 합계</span><strong>${signedMoney(latest.cashFlowSubtotal)}</strong></div><div><span>현금잔액 증감</span><strong>${signedMoney(latest.cashBalanceChange)}</strong></div><div><span>차이 · 원문 확인</span><strong>${signedMoney(latest.cashFlowReconciliationGap)}</strong></div></div>${cashInsights.length ? `<div class="manual-cash-next"><b>다음 확인자료</b>${cashInsights.slice(0, 2).map((insight) => `<div><span>${escapeHtml(insight.title)}</span><strong>${escapeHtml((insight.checks || []).slice(0, 2).join(" · ") || "원문 확인")}</strong></div>`).join("")}</div><details class="manual-cash-insights-more"><summary>해석·근거 ${cashInsights.length}건</summary><div class="manual-cash-insights">${cashInsights.map((insight) => `<article><b>${escapeHtml(insight.title)}</b><p>${escapeHtml(insight.meaning)}</p><small>자료: ${escapeHtml((insight.checks || []).join(" · "))}</small></article>`).join("")}</div></details>` : ""}</section>
+    <section class="manual-subsection manual-performance" id="manual-performance"><div class="section-heading compact"><div><p class="eyebrow">MANAGEMENT PERFORMANCE</p><h3>경영성과 · ${escapeHtml(previous.period)} → ${escapeHtml(latest.period)}</h3></div></div><div class="manual-dimension-grid">${dimensions.map((item) => { const keyMetric = (item.metrics || []).find((metric) => metric.trend?.className === "weakening") || (item.metrics || []).find((metric) => Number.isFinite(metric.latest)) || (item.metrics || [])[0]; return `<button type="button" class="manual-dimension ${blocked ? "unknown" : escapeHtml(item.status?.className || "unknown")}" data-manual-dimension="${escapeHtml(item.id)}"><span>${escapeHtml(item.name)}</span><strong>${blocked ? "판정 보류" : escapeHtml(item.status?.label || "자료부족")}</strong><small>${keyMetric ? `${escapeHtml(keyMetric.label)} ${metricValue(keyMetric.latest, keyMetric.unit)}` : "비교자료 없음"}</small></button>`; }).join("")}</div><div class="manual-performance-details">${dimensions.map((item) => `<details id="manual-detail-${escapeHtml(item.id)}"><summary><b>${escapeHtml(item.name)}</b><span>${escapeHtml(item.question)}</span><strong>${blocked ? "검증 전" : escapeHtml(item.status?.label || "자료부족")}</strong></summary><div class="manual-metric-list">${(item.metrics || []).map((metric) => renderPerformanceMetric(metric, records, blocked)).join("")}</div></details>`).join("")}</div><details class="manual-method-note"><summary>판정 기준</summary>${escapeHtml(analysis.performance?.rule || "전년 비교 가능 수치만 방향을 분류합니다.")}</details></section>
+    <details class="manual-subsection manual-diagnosis"><summary><span>변화 원인과 검증자료</span><b>${blocked ? "입력 수정 후" : `${hypotheses.length}건`}</b></summary>${blocked ? `<p class="manual-blocked-note">검산 불일치를 먼저 수정하세요.</p>` : `<div class="manual-hypothesis-grid">${hypotheses.slice(0, 4).map((item) => `<article><small>${escapeHtml(item.priority)}</small><h4>${escapeHtml(item.category)}</h4><p><b>관찰</b> ${escapeHtml(item.observation)}</p><p><b>가설</b> ${escapeHtml(item.hypothesis)}</p><ul>${(item.verificationSteps || []).map((step) => `<li><b>${escapeHtml(step.title)}</b> · ${escapeHtml(step.data)}<br>${escapeHtml(step.question)}</li>`).join("")}</ul></article>`).join("")}</div>`}</details>
+    <details class="manual-subsection manual-business-evidence"><summary><span>사업·감사 근거</span><b>감사의견 ${escapeHtml(audit.opinion || "미확인")} · 사업 근거 ${businessEvidence.length}건</b></summary><div class="manual-audit-row"><b>감사의견</b><strong>${escapeHtml(audit.opinion || "미확인")}</strong><span>${escapeHtml(audit.reportDate || "보고서일 미입력")} · ${escapeHtml(audit.sourcePage || "원문 위치 미입력")}</span></div>${businessEvidence.length ? `<div class="manual-business-grid">${businessEvidence.map((item) => `<article><h4>${escapeHtml(item.label)}</h4><p>${escapeHtml(item.text)}</p><small>담당자 입력 · 출처: ${escapeHtml(item.source || "미기재")}</small></article>`).join("")}</div>` : `<p class="manual-empty-inline">사업·거래처 설명 미입력 · <a href="#manual-workspace">상담자료에 근거 추가 →</a></p>`}</details>
+    <section class="manual-subsection" id="manual-purpose-review"><div class="section-heading compact"><div><p class="eyebrow">LOAN PURPOSE</p><h3>요청여신별 검토</h3></div></div><div class="manual-purpose-grid">${renderPurposeCard(analysis, "workingCapital", "운전자금", analysis.loanRequest?.workingTermMonths, blocked)}${renderPurposeCard(analysis, "facility", "시설자금", analysis.loanRequest?.facilityTermMonths, blocked)}${!analysis.decisionSupport?.workingCapital?.requested && !analysis.decisionSupport?.facility?.requested ? `<p class="manual-empty-inline">요청금액을 입력하면 검토 근거가 나옵니다.</p>` : ""}</div></section>
+    <section class="manual-subsection manual-scenario" id="manual-scenario"><div class="section-heading compact"><div><p class="eyebrow">SIMPLE SENSITIVITY</p><h3>매출·영업이익 가정</h3></div></div><div class="manual-scenario-controls"><label>매출 변화 <output id="manual-sales-value">기준 0%</output><input id="manual-sales-shock" type="range" min="-30" max="30" step="1" value="0" /><small>-30% · 0 · +30%</small></label><label>영업이익률 변화 <output id="manual-margin-value">기준 0.0%p</output><input id="manual-margin-shock" type="range" min="-20" max="20" step="0.5" value="0" /><small>-20%p · 0 · +20%p</small></label><button class="secondary-button" id="manual-scenario-recalculate" type="button">재계산</button></div><div id="manual-scenario-result" aria-live="polite"><p class="manual-empty-inline">가정값 계산 중</p></div></section>
+    <p class="manual-result-note">고객 입력·담당자 대조 전 수치는 잠정값입니다. PDF ${pdfEvidence.length}건은 브라우저에만 있으며 자동 추출하지 않습니다. 승인·한도 산정에는 사용하지 않습니다.</p>`;
   $("#manual-results").querySelectorAll("[data-manual-dimension]").forEach((button) => button.addEventListener("click", () => {
     const detail = document.getElementById(`manual-detail-${button.dataset.manualDimension}`);
     if (detail) { detail.open = true; detail.scrollIntoView({ behavior: "smooth", block: "start" }); }
@@ -283,17 +347,25 @@ function renderResult(analysis) {
 }
 
 function renderReview(analysis) {
-  const issues = analysis.manualReview?.issues || [];
-  const changes = analysis.manualReview?.changes || [];
-  const blocking = issues.filter((issue) => issue.severity === "blocking").length;
+  const { issues, changes, blocking, missingCorrectionSources, sourceRecorded, sourceReady } = reviewState(analysis);
+  const otherIssues = issues.filter((issue) => issue.severity !== "blocking");
+  const renderIssue = (issue) => `<article class="manual-issue ${issue.severity === "blocking" ? "blocking" : ""}"><div class="manual-issue-head"><small>${escapeHtml(issue.period || "원본 범위")} · ${issue.severity === "blocking" ? "숫자 불일치" : "추가 확인"}</small><h3>${escapeHtml(issue.title)}</h3></div><p>${escapeHtml(issue.detail)}</p>${issue.fields?.length ? `<div class="manual-correction-grid">${issue.fields.map((field) => `<label>${escapeHtml(fieldLabels[field] || field)} · ${escapeHtml(issue.period)}년<input type="text" inputmode="decimal" data-review-period="${escapeHtml(issue.period)}" data-review-field="${escapeHtml(field)}" value="${escapeHtml(issue.values?.[field] || "")}" placeholder="원문 대조 후 입력" /></label>`).join("")}<label>원문 페이지<input type="text" data-review-page="${escapeHtml(issue.id)}" placeholder="예: 감사보고서 p.2" /></label><label>수정 근거<input type="text" data-review-note="${escapeHtml(issue.id)}" placeholder="원문 계정명·값·단위" /></label></div><small class="manual-issue-help">정확한 원문 값을 넣고 페이지·근거를 기록하세요. 검산만 통과해도 원본 일치로 표시하지 않습니다.</small>` : `<small class="manual-issue-help">${escapeHtml((issue.affects || []).join(" · ") || "출처 신뢰성")} 확인에 필요</small>`}</article>`;
   $("#manual-review").hidden = false;
-  $("#manual-review").innerHTML = `<h2>원본 대조·수정 과제</h2><p>오류를 계산에서 숨기지 않습니다. 원본 페이지를 확인한 담당자가 값을 수정한 뒤 재계산할 수 있습니다. 수정 입력은 PDF 자동 검증을 의미하지 않습니다.</p>
-    <div class="manual-review-summary"><strong>필수 오류 ${blocking}건</strong><strong>추가 확인 ${issues.length - blocking}건</strong><strong>담당자 수정 ${changes.length}건</strong></div>
-    <div class="manual-issue-list">${issues.length ? issues.map((issue) => `<article class="manual-issue ${issue.severity === "blocking" ? "blocking" : ""}"><h3>${escapeHtml(issue.title)}</h3><small>${escapeHtml(issue.period || "출처·범위")} · ${issue.severity === "blocking" ? "판단 보류" : "원본 확인"}</small><p>${escapeHtml(issue.detail)}</p><p><b>영향:</b> ${escapeHtml((issue.affects || []).join(" · ") || "출처 신뢰성")}</p>${issue.fields?.length ? `<div class="manual-correction-grid">${issue.fields.map((field) => `<label>${escapeHtml(fieldLabels[field] || field)} · ${escapeHtml(issue.period)}년<input type="text" inputmode="decimal" data-review-period="${escapeHtml(issue.period)}" data-review-field="${escapeHtml(field)}" value="${escapeHtml(issue.values?.[field] || "")}" placeholder="원문 대조 후 입력" /></label>`).join("")}<label>원문 페이지<input type="text" data-review-page="${escapeHtml(issue.id)}" placeholder="예: 감사보고서 p.12" /></label><label>수정 근거<input type="text" data-review-note="${escapeHtml(issue.id)}" placeholder="계정명·단위 차이 기록" /></label></div>` : ""}</article>`).join("") : `<div class="manual-empty">자동 검산 오류는 없습니다. 원본과 입력값의 일치·감사의견·주석은 별도로 확인해야 합니다.</div>`}</div>
-    ${changes.length ? `<h3>수정 이력 · 이 화면에만 유지</h3><ul>${changes.map((item) => `<li>${escapeHtml(item.period)}년 ${escapeHtml(fieldLabels[item.field] || item.field)}: ${money(item.previous)} → ${money(item.current)} · ${escapeHtml(item.page || "원문 페이지 미기재")} · ${escapeHtml(item.note || "근거 미기재")}</li>`).join("")}</ul>` : ""}
-    <div class="manual-review-actions"><button class="primary-button" id="manual-recalculate" type="button">원문 대조값 적용·재계산 →</button><p>계정값을 수정하지 않았다면 검증 과제는 그대로 남습니다.</p></div>`;
+  $("#manual-review").innerHTML = `<div class="manual-review-head"><div><p class="eyebrow">SOURCE CHECK</p><h2>검산 · 원본 대조</h2></div><p>숫자끼리 맞는지와 원본에 맞는지는 다른 검사입니다.</p></div>
+    <div class="manual-review-gates"><div class="${blocking.length ? "needs-work" : "checked"}"><span>① 입력값 검산</span><strong>${blocking.length ? `불일치 ${blocking.length}건` : "통과"}</strong><small>입력 계정 간 관계 검사 · 원본 일치 뜻 아님</small></div><div class="${sourceReady ? "checked" : "needs-review"}"><span>② 원본 대조</span><strong>${sourceReady ? "담당자 대조 기록" : missingCorrectionSources.length ? `수정 근거 ${missingCorrectionSources.length}건 필요` : "미완료"}</strong><small>${sourceRecorded && !sourceReady ? "대조 체크와 별개로 수정값의 출처를 채워야 합니다." : "원본의 금액·계정·기간·단위 확인"}</small></div></div>
+    ${blocking.length ? `<div class="manual-review-blocking"><h3>먼저 바로잡을 입력값</h3><div class="manual-issue-list">${blocking.map(renderIssue).join("")}</div></div>` : `<p class="manual-review-passed">자동 검산 불일치 0건 · 원본 PDF와의 일치는 별도 확인입니다.</p>`}
+    ${otherIssues.length ? `<details class="manual-review-more"><summary>원본에서 추가 확인 ${otherIssues.length}건 <span>회계기준·감사의견·누락계정 등</span></summary><div class="manual-issue-list">${otherIssues.map(renderIssue).join("")}</div></details>` : ""}
+    ${changes.length ? `<div class="manual-review-history"><h3>담당자 수정 ${changes.length}건</h3><div class="manual-history-list">${changes.map((item) => { const supported = String(item.page || "").trim() && String(item.note || "").trim(); const correction = reviewCorrections.find((entry) => entry.period === item.period && entry.field === item.field); return `<div class="manual-history-item"><div class="manual-history-title"><b>${escapeHtml(item.period)}년 ${escapeHtml(fieldLabels[item.field] || item.field)}</b><span class="${supported ? "recorded" : "provisional"}">${supported ? "원문 위치·근거 기록" : "담당자 임시 수정 · 근거 필요"}</span></div><small>CSV 원래값 ${money(item.previous)} → 현재 ${money(item.current)}</small><div class="manual-history-fields"><label>정확한 원문 값<input type="text" inputmode="decimal" data-history-value data-history-period="${escapeHtml(item.period)}" data-history-field="${escapeHtml(item.field)}" value="${escapeHtml(correction?.value ?? "")}" /></label><label>원문 페이지<input type="text" data-history-page value="${escapeHtml(item.page || "")}" placeholder="예: 재무제표 p.2" /></label><label>수정 근거<input type="text" data-history-note value="${escapeHtml(item.note || "")}" placeholder="예: 유동자산 230억원 확인" /></label></div></div>`; }).join("")}</div></div>` : ""}
+    <div class="manual-review-actions"><button class="primary-button" id="manual-recalculate" type="button">수정값 적용 · 다시 계산</button><span>원본에 있는 정확한 값만 입력하세요.</span></div>`;
   $("#manual-recalculate").addEventListener("click", () => {
     const updates = new Map(reviewCorrections.map((item) => [`${item.period}:${item.field}`, item]));
+    document.querySelectorAll("[data-history-value]").forEach((input) => {
+      const period = input.dataset.historyPeriod, field = input.dataset.historyField;
+      const value = input.value.replaceAll(",", "").trim();
+      if (!value) return;
+      const row = input.closest(".manual-history-item");
+      updates.set(`${period}:${field}`, { period, field, value, page: row.querySelector("[data-history-page]")?.value.trim() || "", note: row.querySelector("[data-history-note]")?.value.trim() || "" });
+    });
     document.querySelectorAll("[data-review-field]").forEach((input) => {
       const period = input.dataset.reviewPeriod, field = input.dataset.reviewField;
       const original = String(issues.find((issue) => issue.period === period && issue.fields?.includes(field))?.values?.[field] ?? "").replaceAll(",", "").trim();
@@ -350,23 +422,24 @@ function updateManualInspectionProgress(analysis) {
   $("#manual-inspection-content").querySelectorAll("[data-inspection-id]").forEach((element) => {
     const answer = inspectionAnswers[element.dataset.inspectionId] || {};
     const state = element.querySelector("[data-inspection-state]");
-    if (state) state.textContent = inspectionComplete(answer) ? "관찰·근거·후속조치 기록 완료 · 증빙 진위는 별도 확인" : answer.status && answer.status !== "미확인" ? "판단만 선택됨 · 관찰한 사실·근거·후속조치를 모두 적어야 기록 완료" : "현장 확인 전";
+    if (state) state.textContent = inspectionComplete(answer) ? "기록 완료" : answer.status && answer.status !== "미확인" ? "관찰·증빙·조치 기록 필요" : "미확인";
   });
 }
 
 function renderInspection(analysis) {
   const items = Array.isArray(analysis.inspection) ? analysis.inspection : [];
   $("#manual-print-inspection").disabled = items.length === 0;
-  $("#manual-inspection-content").innerHTML = `<div class="manual-result-head"><div><h2>${escapeHtml(analysis.company?.name)} 현장실사 점검표</h2><p>공통 관리 → 업종 → 재무 위험신호 → 요청자금 목적에 따라 ${items.length}개 항목을 생성했습니다.</p></div><strong class="manual-inspection-progress" id="manual-inspection-progress"></strong></div><div class="manual-inspection-list">${items.map((item) => {
+  $("#manual-inspection-content").innerHTML = `<div class="manual-result-head"><div><h2>${escapeHtml(analysis.company?.name)} · 현장 확인 ${items.length}항목</h2></div><strong class="manual-inspection-progress" id="manual-inspection-progress"></strong></div><div class="manual-inspection-list">${items.map((item) => {
     const answer = inspectionAnswers[item.ruleId] || {};
     const files = inspectionEvidence.get(item.ruleId) || [];
     const [observationHint, evidenceHint, actionHint] = inspectionHints(item);
-    return `<article class="manual-inspection-item" data-inspection-id="${escapeHtml(item.ruleId)}"><div class="manual-inspection-item-head"><span>${escapeHtml(item.category)}<small>${escapeHtml(item.ruleSource)}</small></span><div><h3>${escapeHtml(item.question)}</h3><p>${escapeHtml(item.reason)}</p></div><label>현장 판단<select data-inspection-field="status">${["미확인", "정상 확인", "우려 확인", "자료 요청"].map((status) => `<option${(answer.status || "미확인") === status ? " selected" : ""}>${status}</option>`).join("")}</select></label></div><div class="manual-inspection-fields"><label>관찰한 사실<textarea data-inspection-field="observation" maxlength="2000" placeholder="${escapeHtml(observationHint)}">${escapeHtml(answer.observation || "")}</textarea></label><div class="manual-inspection-evidence"><label>확인 근거·증빙<textarea data-inspection-field="evidence" maxlength="2000" placeholder="${escapeHtml(evidenceHint)}">${escapeHtml(answer.evidence || "")}</textarea></label><label>사진·스캔 PDF 선택<input type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" multiple data-inspection-files /><small>최대 3개 · 파일당 10MB · 브라우저 탭 안에서만 열람 · 자동 판독 없음</small></label><div class="manual-evidence-list">${files.map((file) => `<a href="${escapeHtml(file.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(file.name)} ↗</a>`).join("") || "선택한 파일 없음"}</div></div><label>심사 영향·후속조치<textarea data-inspection-field="action" maxlength="2000" placeholder="${escapeHtml(actionHint)}">${escapeHtml(answer.action || "")}</textarea></label></div><small class="manual-inspection-entry-state" data-inspection-state></small></article>`;
-  }).join("")}</div><label class="manual-inspection-summary">현장실사 종합 메모<textarea id="manual-inspection-summary" rows="4" maxlength="3000" placeholder="최초 우려 → 현장 관찰·증빙 → 해소 여부 → 심사역 전달 사항을 구분해 기록하세요.">${escapeHtml(inspectionSummary)}</textarea></label><p class="manual-result-note">현장 기록과 선택한 사진·PDF는 현재 브라우저 탭에만 남습니다. OCR·서버 저장은 하지 않습니다. 실제 고객자료 보관에는 조직의 승인된 절차를 따르세요.</p>`;
+    return `<article class="manual-inspection-item" data-inspection-id="${escapeHtml(item.ruleId)}"><div class="manual-inspection-item-head"><span>${escapeHtml(item.category)}<small>${escapeHtml(item.ruleSource)}</small></span><div><h3>${escapeHtml(item.question)}</h3></div><label>현장 판단<select data-inspection-field="status">${["미확인", "정상 확인", "우려 확인", "자료 요청"].map((status) => `<option${(answer.status || "미확인") === status ? " selected" : ""}>${status}</option>`).join("")}</select></label></div><details class="manual-inspection-record" ${answer.status && answer.status !== "미확인" && !inspectionComplete(answer) ? "open" : ""}><summary>관찰 사실 · 증빙 · 후속조치 입력</summary><div class="manual-inspection-fields"><label>관찰한 사실<textarea data-inspection-field="observation" maxlength="2000" placeholder="${escapeHtml(observationHint)}">${escapeHtml(answer.observation || "")}</textarea></label><div class="manual-inspection-evidence"><label>확인 근거·증빙<textarea data-inspection-field="evidence" maxlength="2000" placeholder="${escapeHtml(evidenceHint)}">${escapeHtml(answer.evidence || "")}</textarea></label><label>사진·스캔 PDF 선택<input type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" multiple data-inspection-files /><small>최대 3개 · 파일당 10MB · 브라우저 탭에서만 열람</small></label><div class="manual-evidence-list">${files.map((file) => `<a href="${escapeHtml(file.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(file.name)} ↗</a>`).join("") || "선택한 파일 없음"}</div></div><label>심사 영향·후속조치<textarea data-inspection-field="action" maxlength="2000" placeholder="${escapeHtml(actionHint)}">${escapeHtml(answer.action || "")}</textarea></label></div></details><small class="manual-inspection-entry-state" data-inspection-state></small></article>`;
+  }).join("")}</div><label class="manual-inspection-summary">현장실사 종합 메모<textarea id="manual-inspection-summary" rows="3" maxlength="3000" placeholder="최초 우려 → 증빙 → 해소 여부 → 심사역 전달 사항">${escapeHtml(inspectionSummary)}</textarea></label><p class="manual-result-note">선택한 사진·PDF는 현재 브라우저 탭에만 남으며 자동 판독·서버 저장하지 않습니다.</p>`;
   $("#manual-inspection-content").querySelectorAll("[data-inspection-field]").forEach((input) => input.addEventListener("input", () => {
     const id = input.closest("[data-inspection-id]").dataset.inspectionId;
     inspectionAnswers[id] ||= {};
     inspectionAnswers[id][input.dataset.inspectionField] = input.value;
+    if (input.dataset.inspectionField === "status" && input.value !== "미확인") input.closest("[data-inspection-id]").querySelector(".manual-inspection-record").open = true;
     updateManualInspectionProgress(analysis);
     renderOpinion(currentAnalysis);
   }));
@@ -505,15 +578,17 @@ async function performAnalysis() {
     if (!response.ok) throw new Error(result.error || `분석 실패 (${response.status})`);
     currentAnalysis = result;
     manualScenarioResult = null;
+    renderManualDecisionBoard(result);
     renderReview(result);
     renderResult(result);
     renderInspection(result);
     renderOpinion(result);
     calculateManualScenario();
     const issues = result.manualReview?.issues || [];
-    $("#manual-status").textContent = `입력값을 계산하고 검증 과제 ${issues.length}건을 표시했습니다. 원본과 대조 전이므로 모든 해석은 잠정입니다.`;
+    $("#manual-status").textContent = `분석 완료 · 입력값 불일치 ${issues.filter((item) => item.severity === "blocking").length}건 · 원문 추가 확인 ${issues.filter((item) => item.severity !== "blocking").length}건`;
+    $("#manual-workspace").open = false;
     showManualPage("analysis");
-    $("#manual-review").scrollIntoView({ behavior: "smooth", block: "start" });
+    $("#manual-decision-board").scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (error) {
     $("#manual-status").textContent = error.message;
   } finally { submit.disabled = false; }
@@ -553,6 +628,7 @@ $("#manual-save-report").addEventListener("click", async () => {
 });
 
 fetch("/api/health").then((response) => response.json()).then((health) => {
+  $("#manual-public-warning").hidden = !health.publicDemo;
   $("#manual-transfer-note").textContent = health.publicDemo
     ? "공개 체험판: 기업명·CSV 수치·신청액·감사 및 사업 입력 메모는 분석 요청 시 Vercel 서버로 전송되지만 CreditLens 사건·파일 저장소에는 보관되지 않습니다. PDF는 브라우저 탭에만 남습니다. 포트폴리오 체험에는 가상기업 예시를 권장합니다."
     : "로컬판: 기업명·CSV 수치·신청액·감사 및 사업 입력 메모는 이 PC의 분석 서버에서 처리하며 사건·파일 저장소에는 보관되지 않습니다. PDF는 브라우저 탭에만 남습니다.";

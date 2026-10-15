@@ -108,6 +108,20 @@ test("현장 완료에는 판단·관찰·근거·후속조치가 모두 있어�
   assert.match(html, /우려·자료 요청<\/span><strong>2건/);
 });
 
+test("방문 전 빈 점검지는 최종 보고서에서 요약하고 기록된 항목만 상세 표시한다", () => {
+  const inspections = Array.from({ length: 14 }, (_, index) => ({ category: `항목 ${index + 1}`, question: `확인 질문 ${index + 1}`, status: "미확인" }));
+  const html = renderFullReport({
+    company: { name: "가상 차주" },
+    inspections,
+    openItems: inspections.map((item) => ({ title: `${item.category} 현장 재확인`, reason: `${item.question} · 미확인; 관찰·증빙·후속조치 대조` })),
+  });
+  assert.match(html, /방문 전 점검 대상 · 14건/);
+  assert.match(html, /현장 미확인 14건/);
+  assert.equal((html.match(/class="cr-inspection-item"/g) || []).length, 0);
+  assert.equal((html.match(/<li><b>항목 \d+ 현장 재확인/g) || []).length, 0);
+  assert.match(html, /확인 질문 14/);
+});
+
 test("사용자 정의 지표의 원계정·기간·범위·출처를 기본 대입값과 병합한다", () => {
   const html = renderFullReport({
     company: { name: "가상 차주" },
@@ -172,7 +186,17 @@ test("실제 가상 CSV 기반 비상장 모델도 상장 모델과 같은 12개
   assert.match(listedHtml, /최근 연간 공시자료/);
   assert.match(privateHtml, /단순 FCF/);
   assert.match(privateHtml, /현장실사 기록과 우려 재판단/);
-  assert.match(privateHtml, /<span class="cr-tag ">미확인 · 기록 미완료<\/span>/);
+  assert.match(privateHtml, /방문 전 점검 대상 · 1건/);
+});
+
+test("비상장 수정값은 원본 CSV와 구분해 보고서 출처에 남긴다", () => {
+  const model = buildPrivateReportModel({
+    company: { name: "가상기업" }, records: [{ period: "2025", currentAssets: 22_000_000_000 }],
+    manualReview: { issues: [], sourceReview: { confirmed: false }, changes: [{ period: "2025", field: "currentAssets", label: "유동자산", previous: 20_500_000_000, current: 22_000_000_000, page: "", note: "" }] },
+  }, { csvName: "고객 제출.csv" });
+  assert.match(model.sourceLabel, /담당자 수정 1건/);
+  assert.ok(model.sources.some((source) => source.name === "2025년 유동자산 담당자 수정" && /원문 근거 미기록/.test(source.status) && /205억원 → 220억원/.test(source.locator)));
+  assert.ok(model.definitions.every((definition) => /담당자 수정 1건/.test(definition.source)));
 });
 
 test("사용자 입력과 원자료 URL은 HTML 또는 스크립트로 실행되지 않는다", () => {
