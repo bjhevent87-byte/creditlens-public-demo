@@ -303,7 +303,7 @@ function renderDebtAnalysis(latest) {
     const difference = amount(latest[metric.name === "부채비율" ? "debtRatio" : metric.name === "유동비율" ? "currentRatio" : "financeCostCoverage"]);
     const mismatch = difference !== null && derived !== null && Math.abs(difference - derived) > (metric.unit === "배" ? 0.03 : 0.2);
     return `<div class="cr-ratio"><span>${metric.name}</span><strong>${ratio(derived, metric.unit, 2)}</strong><small>${metric.formula}</small><p>${unsignedMoney(metric.numerator)} ÷ ${unsignedMoney(metric.denominator)}${metric.factor === 100 ? " × 100" : ""}</p>${mismatch ? `<em>제공 비율과 재계산값 차이 확인 필요</em>` : ""}</div>`;
-  }).join("")}</div><p class="cr-caption">지표는 제공된 원계정으로 단순 재계산한 값입니다. 재무제표 범위·기간과 비용 계정 정의를 원문에서 확인해야 합니다. ${interestProxy ? "이자비용을 대체 사용했으므로 포괄손익계산서 금융비용 기반 배율로 해석하지 않습니다." : "영업이익/금융비용은 주석상 이자비용만 사용한 이자보상배율과 다릅니다."}</p>`;
+  }).join("")}</div><div class="cr-risk-gate"><b>이 배율만으로 상환능력을 판단할 수 없습니다</b><p>${interestProxy ? "대체 입력 이자비용의 계정 정의와 주석 원문을 확인해야 합니다." : "위 배율은 금융비용 전체를 분모로 사용하며, 순수 이자비용 기준 이자보상배율은 별도로 산정하지 않았습니다."} 1년 내 원리금 만기액, 담보·보증, 관계회사 지원·우발채무도 아직 확정되지 않았습니다. 원문 주석과 차입명세를 대조한 뒤 만기별 상환재원을 검토하세요.</p></div><p class="cr-caption">지표는 제공된 원계정으로 단순 재계산한 값입니다. 재무제표 범위·기간과 비용 계정 정의를 원문에서 확인해야 합니다. ${interestProxy ? "이자비용을 대체 사용했으므로 포괄손익계산서 금융비용 기반 배율로 해석하지 않습니다." : "영업이익/금융비용은 주석상 이자비용만 사용한 이자보상배율과 다릅니다."}</p>`;
 }
 function renderLoanReviews(value, request) {
   const reviews = asObject(value);

@@ -80,6 +80,9 @@
 .credit-full-report .cr-request-grid span, .credit-full-report .cr-debt-head span { color: var(--cr-muted); font-size: 12px; }
 .credit-full-report .cr-request-grid strong, .credit-full-report .cr-debt-head strong { color: var(--cr-forest); font-size: 20px; }
 .credit-full-report .cr-request-grid small, .credit-full-report .cr-debt-head small { margin-left: auto; color: var(--cr-muted); font-size: 11px; }
+.credit-full-report .cr-risk-gate { margin: 12px 0; padding: 13px 15px; border: 1px solid #eccba6; border-left: 4px solid #bb6a1b; border-radius: 8px; background: #fff9f1; break-inside: avoid; }
+.credit-full-report .cr-risk-gate b { display: block; color: #713d14; font-size: 14px; }
+.credit-full-report .cr-risk-gate p { margin: 4px 0 0; color: #493b2f; font-size: 12px; line-height: 1.55; }
 .credit-full-report .cr-compact-callout { display: flex; gap: 12px; padding: 13px 15px; border-radius: 8px; background: var(--cr-soft); }
 .credit-full-report .cr-key-table { width: 100%; border-collapse: collapse; margin: 10px 0 16px; }
 .credit-full-report .cr-key-table th, .credit-full-report .cr-key-table td { padding: 9px 12px; border-bottom: 1px solid var(--cr-line); text-align: left; vertical-align: top; }

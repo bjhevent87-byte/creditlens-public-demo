@@ -137,6 +137,13 @@ test("이자비용 대체값은 금융비용 배율이라고 표기하지 않는
   assert.doesNotMatch(html, /영업이익\/금융비용은 주석상 이자비용만/);
 });
 
+test("금융비용 배율 옆에는 미산정 상환위험을 명시한다", () => {
+  const html = renderFullReport(sample);
+  assert.match(html, /이 배율만으로 상환능력을 판단할 수 없습니다/);
+  assert.match(html, /순수 이자비용 기준 이자보상배율은 별도로 산정하지 않았습니다/);
+  assert.match(html, /1년 내 원리금 만기액, 담보·보증, 관계회사 지원·우발채무도 아직 확정되지 않았습니다/);
+});
+
 test("실제 가상 CSV 기반 비상장 모델도 상장 모델과 같은 12개 장을 쓴다", async () => {
   const csv = await readFile(new URL("../public/가상_에이비정밀_별도재무_2023-2025_억원.csv", import.meta.url), "utf8");
   const records = parseManualStatementsCsv(csv, { unit: "억원", sourceName: "가상 제출 CSV" });
