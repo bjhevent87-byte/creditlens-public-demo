@@ -1,3 +1,6 @@
+import { renderFullReport, renderFullReportDocument } from "./final-report.js";
+import { buildListedReportModel } from "./listed-report-model.js";
+
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
 
@@ -5,7 +8,7 @@ const state = {
   selectedCompany: null,
   analysis: null,
   stress: null,
-  report: "opinion",
+  report: "full",
   loanView: "integrated",
   financialView: null,
   performanceView: null,
@@ -207,7 +210,7 @@ async function analyze(demo = false) {
     state.stress = null;
     state.reviewOutcome = null;
     if (!sameCompany) {
-      state.report = "opinion";
+      state.report = "full";
       state.findingReviews = {};
       state.attachments.filter((file) => file.sessionOnly && file.objectUrl).forEach((file) => URL.revokeObjectURL(file.objectUrl));
       state.attachments = [];
@@ -1489,7 +1492,7 @@ $("#inspection-list").addEventListener("input", (event) => {
   state.inspectionDetails[index] ||= {};
   state.inspectionDetails[index][field.dataset.field] = field.value.slice(0, 2000);
   updateInspectionProgress();
-  if (state.report === "inspection" || state.report === "opinion") renderReport();
+  if (state.report === "inspection" || state.report === "opinion" || state.report === "full") renderReport();
 });
 
 $("#inspection-list").addEventListener("click", (event) => {
@@ -1528,13 +1531,13 @@ function inspectionEffectiveStatus(index) {
   const status = state.inspectionStatus[index] || "미확인";
   const detail = state.inspectionDetails[index] || {};
   if (status === "미확인") return status;
-  if (["확인", "이상징후"].includes(status) && (!detail.observation?.trim() || !detail.evidence?.trim())) return "근거 미기록";
-  if (status === "자료요청" && !detail.followUp?.trim()) return "요청자료 미기록";
+  if (!detail.observation?.trim() || !detail.evidence?.trim()) return "근거 미기록";
+  if (!detail.followUp?.trim()) return status === "자료요청" ? "요청자료 미기록" : "후속조치 미기록";
   return status;
 }
 
 function inspectionCompletedCount() {
-  return (state.analysis?.inspection || []).filter((_, index) => !["미확인", "근거 미기록", "요청자료 미기록"].includes(inspectionEffectiveStatus(index))).length;
+  return (state.analysis?.inspection || []).filter((_, index) => !["미확인", "근거 미기록", "후속조치 미기록", "요청자료 미기록"].includes(inspectionEffectiveStatus(index))).length;
 }
 
 function updateInspectionProgress() {
@@ -1543,7 +1546,7 @@ function updateInspectionProgress() {
   $("#inspection-progress").textContent = `${done}/${total} 근거 기록`;
   $("#inspection-list").querySelectorAll("[data-inspection-state]").forEach((element) => {
     const status = inspectionEffectiveStatus(element.dataset.inspectionState);
-    element.textContent = status === "근거 미기록" ? "정상·우려 판단에는 관찰한 사실과 확인 근거가 모두 필요합니다." : status === "요청자료 미기록" ? "요청할 자료와 후속조치를 적어 주세요." : status === "미확인" ? "현장 확인 전" : `${status} · 근거 기록됨`;
+    element.textContent = status === "근거 미기록" ? "판단에는 관찰한 사실과 확인 근거가 모두 필요합니다." : status === "후속조치 미기록" || status === "요청자료 미기록" ? "심사 영향과 후속조치를 적어 주세요." : status === "미확인" ? "현장 확인 전" : `${status} · 관찰·근거·후속조치 기록됨`;
   });
 }
 
@@ -1564,7 +1567,7 @@ function updateUtilization() {
 $("#previous-utilization").addEventListener("input", updateUtilization);
 $("#current-utilization").addEventListener("input", updateUtilization);
 $("#inspection-notes").addEventListener("input", () => {
-  if (state.analysis && state.report === "opinion") renderReport();
+  if (state.analysis && ["opinion", "full"].includes(state.report)) renderReport();
 });
 
 function combinedReviewAssessment() {
@@ -1756,7 +1759,54 @@ function inspectionDetailReport() {
   return `<h3>현장실사 점검 리포트</h3><p class="report-meta">${escapeHtml(a.company.name)} · ${escapeHtml(a.basisDate)} · ${inspectionCompletedCount()}/${(a.inspection || []).length}건 근거 기록</p><p>‘정상 확인’만 선택하고 관찰 사실·근거를 적지 않은 항목은 확인 완료로 보지 않습니다. 현장 기록은 심사자의 별도 검토 대상입니다.</p>${utilizationText}<ol class="inspection-report-items">${rows}</ol><h4>현장 종합 메모</h4><p>${escapeHtml($("#inspection-notes").value || "미기록")}</p>`;
 }
 
+function fullListedReportModel() {
+  if (!state.analysis) return null;
+  const analysis = state.analysis;
+  const borrowerScope = analysis.statementViews?.OFS ? "OFS" : analysis.primaryFsDiv || "CFS";
+  const borrowerView = analysis.statementViews?.[borrowerScope] || analysis;
+  const currentScopeIsBorrower = state.statementScope === borrowerScope;
+  const inspections = (borrowerView.inspection || []).map((item) => {
+    const currentIndex = currentScopeIsBorrower ? (analysis.inspection || []).findIndex((entry) => entry.ruleId === item.ruleId) : -1;
+    const memory = state.inspectionMemory[item.ruleId] || {};
+    const selected = currentIndex >= 0 ? state.inspectionStatus[currentIndex] || "미확인" : memory.status || "미확인";
+    const detail = currentIndex >= 0 ? state.inspectionDetails[currentIndex] || {} : memory.detail || {};
+    let status = selected;
+    if (selected !== "미확인" && (!detail.observation?.trim() || !detail.evidence?.trim())) status = "근거 미기록";
+    else if (selected !== "미확인" && !detail.followUp?.trim()) status = selected === "자료요청" ? "요청자료 미기록" : "후속조치 미기록";
+    return {
+      category: item.category,
+      question: item.question,
+      selectedStatus: selected,
+      status,
+      observation: detail.observation || "",
+      evidence: detail.evidence || "",
+      action: detail.followUp || "",
+      files: state.attachments.filter((file) => file.inspectionId === item.ruleId).map((file) => ({ name: file.name, sha256: file.sha256 })),
+    };
+  });
+  const previousUtilization = $("#previous-utilization").value;
+  const currentUtilization = $("#current-utilization").value;
+  const siteUtilization = previousUtilization !== "" && currentUtilization !== "" &&
+    Number.isFinite(Number(previousUtilization)) && Number.isFinite(Number(currentUtilization))
+    ? { previous: Number(previousUtilization), current: Number(currentUtilization) } : null;
+  const profile = industryProfile();
+  return buildListedReportModel(analysis, {
+    inspections,
+    macroRows: (analysis.macro || []).filter((item) => profile.macroIds.includes(item.id)),
+    industryLabel: profile.label,
+    industryEvidence: state.industryEvidence,
+    findings: currentScopeIsBorrower ? combinedReviewAssessment().redFlags : borrowerView.assessment?.redFlags || [],
+    reviewOutcome: currentScopeIsBorrower ? state.reviewOutcome : null,
+    debtSummary: currentScopeIsBorrower ? debtRegisterSummary() : null,
+    stress: currentScopeIsBorrower ? state.stress : null,
+    structure: currentScopeIsBorrower ? state.structure : null,
+    inspectionNotes: $("#inspection-notes").value,
+    siteUtilization,
+  });
+}
+
 function reportContent(type) {
+  if (type === "full") return renderFullReport(fullListedReportModel());
   if (type === "opinion") return conciseOpinionReport();
   if (type === "inspection") return inspectionDetailReport();
   const base = baseReportContent(type);
@@ -1789,18 +1839,32 @@ $(".report-tabs").addEventListener("click", (event) => {
   renderReport();
 });
 
-$("#print-report").addEventListener("click", () => window.print());
-$("#save-report").addEventListener("click", () => {
+$("#print-report").addEventListener("click", () => {
   if (!state.analysis) return;
-  const title = `${state.analysis.company.name} 여신검토 리포트`;
-  const exportStyles = `*{box-sizing:border-box}body{margin:0;background:#eef3f8;color:#17233d;font-family:"Malgun Gothic",sans-serif;line-height:1.72}.page{max-width:960px;min-height:1120px;margin:32px auto;padding:54px 62px;background:#fff;box-shadow:0 18px 60px #183b6b1a;border-top:8px solid #1769e0}.brand{color:#1769e0;font-size:14px;font-weight:800;letter-spacing:.08em}.report-sheet h3{margin:18px 0 8px;font-size:30px}.report-sheet h4{margin:30px 0 10px;padding-bottom:8px;border-bottom:2px solid #e8eef7;font-size:20px}.report-meta{color:#607189;font-size:14px}.report-sheet p,.report-sheet li{font-size:16px}.report-sheet table{width:100%;border-collapse:collapse;font-size:15px}.report-sheet th,.report-sheet td{padding:11px;border-bottom:1px solid #dce4ef;text-align:left;vertical-align:top}.report-sheet th{background:#eff5ff}.source-intro{color:#526983}.source-summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.source-summary-grid article{padding:17px;border:1px solid #dce6f2;border-radius:10px;background:#f9fcff}.source-summary-grid article>span{color:#5d7187;font-size:14px}.source-summary-grid article>strong{display:block;margin:8px 0;color:#153e74;font-size:21px}.source-statement-list>div{display:grid;padding-top:7px;border-top:1px solid #e1e9f3;font-size:14px}.source-statement-list small{color:#61748a}.source-recency{display:grid;grid-template-columns:1fr 1fr;gap:10px}.source-recency p{padding:13px;border:1px solid #e1e9f3}.source-recency b{display:block;color:#1769e0}.source-details{margin-top:15px;padding:15px;border:1px solid #dce6f2;border-radius:9px}.source-details summary{color:#145eae;font-size:16px;font-weight:800;cursor:pointer}.source-details .table-wrap,.source-details ul{margin-top:12px}.source-caveat{padding:14px;border-left:4px solid #e9a52c;background:#fffaf0}@media(max-width:680px){.page{margin:0;padding:28px}.source-summary-grid,.source-recency{grid-template-columns:1fr}}@media print{body{background:#fff}.page{max-width:none;min-height:0;margin:0;padding:24px 28px;box-shadow:none}.source-details{break-inside:avoid}}`;
-  const documentHtml = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escapeHtml(title)}</title><style>${exportStyles}</style></head><body><main class="page"><div class="brand">CREDITLENS · CREDIT REVIEW WORKBOOK</div><article class="report-sheet">${reportContent(state.report)}</article></main></body></html>`;
-  const blob = new Blob([documentHtml], { type: "text/html;charset=utf-8" });
-  const anchor = document.createElement("a");
-  anchor.href = URL.createObjectURL(blob);
-  anchor.download = `${state.analysis.company.name.replace(/[\\/:*?"<>|]/g, "_")}_${state.report}_${state.analysis.basisDate}.html`;
-  anchor.click();
-  URL.revokeObjectURL(anchor.href);
+  state.report = "full";
+  $$(".report-tabs button").forEach((item) => item.classList.toggle("active", item.dataset.report === "full"));
+  renderReport();
+  window.print();
+});
+$("#save-report").addEventListener("click", async () => {
+  if (!state.analysis) return;
+  const button = $("#save-report");
+  button.disabled = true;
+  try {
+    const model = fullListedReportModel();
+    const documentHtml = await renderFullReportDocument(model);
+    const blob = new Blob([documentHtml], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${model.company.name.replace(/[\\/:*?"<>|]/g, "_")}_최종기업분석보고서_${model.basisDate}.html`;
+    anchor.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 30000);
+  } catch (error) {
+    alert(`전체 보고서 저장 실패: ${error.message}`);
+  } finally {
+    button.disabled = false;
+  }
 });
 $("#download-json").addEventListener("click", () => {
   const blob = new Blob([JSON.stringify({ ...state.analysis, stress: state.stress, inspectionStatus: state.inspectionStatus, inspectionDetails: state.inspectionDetails, inspectionMemory: state.inspectionMemory }, null, 2)], { type: "application/json" });
@@ -1880,7 +1944,7 @@ $("#saved-cases").addEventListener("click", async (event) => {
     state.inspectionDetails = saved.inspectionDetails || {};
     state.inspectionMemory = saved.inspectionMemory || {};
     state.statementScope = saved.statementScope || saved.analysis.primaryFsDiv || "OFS";
-    state.report = saved.report || "consultation";
+    state.report = ["full", "opinion", "inspection", "sources"].includes(saved.report) ? saved.report : "full";
     state.caseId = record.id;
     state.caseRevision = record.revision;
     $("#selected-company").textContent = `${saved.analysis.company.name} · DART ${saved.analysis.company.corpCode}`;

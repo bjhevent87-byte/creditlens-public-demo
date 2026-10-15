@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { createServer } from "node:http";
 import { inspectManualStatementsCsv, MANUAL_CSV_COLUMNS, MANUAL_CSV_LABELS } from "../src/services/manual-statement-service.mjs";
 
 const csv = [
@@ -57,4 +58,32 @@ test("한글 CSV 계정명을 읽고 영어 기존 양식도 유지하며 중복
   assert.equal(inspectManualStatementsCsv(csv, { unit: "억원" }).records.length, 2);
   assert.throws(() => inspectManualStatementsCsv("연도,period,매출액\n2024,2024,100\n2025,2025,110"), /중복/);
   assert.throws(() => inspectManualStatementsCsv("연도,임의계정\n2024,1\n2025,2"), /알 수 없는 CSV 계정명/);
+});
+
+test("비상장 분석 API는 감사·사업 입력의 출처 상태를 보존하되 자동 검증으로 표시하지 않는다", async () => {
+  process.env.CREDIT_PLATFORM_SERVERLESS = "1";
+  const { handleRequest } = await import("../server.mjs");
+  const server = createServer(handleRequest);
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const port = server.address().port;
+    const input = {
+      companyName: "가상 에이비정밀", industry: "자동차부품 제조업", unit: "억원", csvText: csv,
+      statementBasis: "OFS", accountingStandard: "일반기업회계기준", auditStatus: "감사의견 원문 확인 필요",
+      auditReview: { opinion: "적정", reportDate: "2026-03-20", sourcePage: "감사보고서 p.1" },
+      businessEvidence: { businessModel: { text: "자동차부품 매출 구조 담당자 입력", source: "사업설명 p.3" }, customers: { text: "거래처 결제조건 면담", source: "면담 2026-10-15" } },
+      sourceReview: { confirmed: true, note: "재무제표 p.2와 대조" }, loanRequest: { workingAmount: 10 },
+    };
+    const response = await fetch(`http://127.0.0.1:${port}/api/manual-analysis`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
+    assert.equal(response.status, 200);
+    const data = await response.json();
+    assert.deepEqual(data.manualReview.auditReview, { opinion: "적정", reportDate: "2026-03-20", sourcePage: "감사보고서 p.1", status: "담당자 입력 · 원문 자동검증 아님" });
+    assert.equal(data.manualReview.businessEvidence.find((item) => item.id === "businessModel")?.source, "사업설명 p.3");
+    assert.match(data.manualReview.businessEvidence.find((item) => item.id === "customers")?.status, /자동검증 아님/);
+    assert.equal(data.manualReview.issues.some((item) => item.id === "audit-opinion-source"), false);
+    const withoutPage = await fetch(`http://127.0.0.1:${port}/api/manual-analysis`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...input, auditReview: { opinion: "한정" } }) });
+    assert.equal((await withoutPage.json()).manualReview.issues.some((item) => item.id === "audit-opinion-source"), true);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
 });

@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/styles.css" />
   <link rel="stylesheet" href="/ux-refresh.css" />
+  <link rel="stylesheet" href="/final-report.css" />
 </head>
 <body>
   <header class="topbar">
@@ -33,7 +34,7 @@
       <p class="side-label">WORKFLOW</p>
       <a class="active" href="#overview" data-workflow-nav="analysis"><span>01</span>분석결과</a>
       <a href="#inspection" data-workflow-nav="inspection"><span>02</span>현장실사 기록</a>
-      <a href="#report" data-workflow-nav="opinion"><span>03</span>심사의견</a>
+      <a href="#report" data-workflow-nav="opinion"><span>03</span>최종 보고서</a>
       <div class="side-note">
         <strong>판단 원칙</strong>
         <p>사실과 해석을 분리하고, 자동 승인 대신 다음 확인사항을 제시합니다.</p>
@@ -94,7 +95,7 @@
           <ol>
             <li><b>분석결과</b><span>최신 공시·상환재원·자금용도별 쟁점</span></li>
             <li><b>현장실사 기록</b><span>관찰한 사실·증빙·후속조치를 항목별 작성</span></li>
-            <li><b>심사의견</b><span>해소된 우려와 미해소 쟁점을 구분</span></li>
+            <li><b>최종 보고서</b><span>현장 기록과 미해소 쟁점을 함께 정리</span></li>
           </ol>
           <div class="api-stack" id="api-stack"></div>
           <div class="saved-case-quick"><h3>저장된 사건 다시 열기</h3><div id="saved-cases"></div></div>
@@ -124,7 +125,7 @@
         <nav class="workflow-stepbar" aria-label="여신검토 단계">
           <button type="button" class="active" data-workflow-nav="analysis"><b>1</b><span>분석결과</span></button>
           <button type="button" data-workflow-nav="inspection"><b>2</b><span>현장실사 기록</span></button>
-          <button type="button" data-workflow-nav="opinion"><b>3</b><span>심사의견</span></button>
+          <button type="button" data-workflow-nav="opinion"><b>3</b><span>최종 보고서</span></button>
         </nav>
         <div class="workflow-page" data-workflow-page="analysis">
 
@@ -290,17 +291,17 @@
           <div id="review-outcome" class="review-outcome"></div>
         </section>
 
-        <div class="workflow-next"><button type="button" class="primary-small" data-workflow-nav="opinion">심사의견으로 이동 →</button></div>
+        <div class="workflow-next"><button type="button" class="primary-small" data-workflow-nav="opinion">최종 보고서로 이동 →</button></div>
         </div>
 
         <div class="workflow-page" data-workflow-page="opinion" hidden>
         <section class="panel report-panel" id="report">
-          <div class="section-heading"><div><p class="eyebrow">REPORT WORKFLOW</p><h2>심사의견</h2><p>핵심 사실·당기 변화·미확인 사항을 먼저 보여줍니다. 현장실사와 증빙이 추가되면 의견을 다시 확인하세요.</p></div><div class="report-actions"><button class="secondary-button" id="save-report" type="button">리포트 파일 저장</button><button class="primary-small" id="print-report" type="button">PDF 인쇄·저장</button></div></div>
+          <div class="section-heading"><div><p class="eyebrow">FINAL CREDIT REVIEW</p><h2>최종 기업분석 보고서</h2><p>재무·사업·산업·요청여신과 현장실사 기록을 한 문서에 묶습니다. 원본과 대조하지 못한 내용은 확인 과제로 남깁니다.</p></div><div class="report-actions"><button class="secondary-button" id="save-report" type="button">전체 보고서 HTML 저장</button><button class="primary-small" id="print-report" type="button">전체 보고서 PDF 인쇄·저장</button></div></div>
           <div class="report-tabs" role="tablist">
-            <button data-report="consultation" type="button">1 상담 사전분석</button>
-            <button data-report="inspection" type="button">2 현장실사 점검 리포트</button>
-            <button class="active" data-report="opinion" type="button">심사의견 요약</button>
-            <button data-report="sources" type="button">데이터 출처</button>
+            <button class="active" data-report="full" type="button">전체 보고서 · 12장</button>
+            <button data-report="opinion" type="button">요약 의견</button>
+            <button data-report="inspection" type="button">현장실사 상세</button>
+            <button data-report="sources" type="button">출처 요약</button>
           </div>
           <article class="report-sheet" id="report-sheet"></article>
         </section>

@@ -57,7 +57,8 @@ test("재무 레코드에서 회전주기와 이자보상배율을 계산한다"
 });
 
 test("세 현금흐름과 FCF를 연결해 외부조달 투자부담을 판정한다", () => {
-  const records = enrichFinancialRecords(DEMO_RECORDS);
+  // 이 검증용 가상 시나리오에서는 무형자산 취득액을 명시적으로 0원으로 둔다.
+  const records = enrichFinancialRecords(DEMO_RECORDS.map((row) => ({ ...row, intangibleCapex: 0 })));
   const latest = records.at(-1);
   const analysis = buildCashFlowAnalysis(records);
   assert.equal(latest.freeCashFlow, -17_500_000_000);
@@ -67,6 +68,33 @@ test("세 현금흐름과 FCF를 연결해 외부조달 투자부담을 판정�
   assert.equal(Math.round(latest.capexCoverage * 100) / 100, 0.4);
   assert.ok(analysis.insights.some((item) => item.id === "investment-funded-externally"));
   assert.ok(analysis.insights.some((item) => item.id === "debt-expansion"));
+});
+
+test("유형·무형자산 취득 중 한 계정이 빠지면 CAPEX와 FCF를 계산하지 않는다", () => {
+  for (const missingAccount of [
+    { capex: 29_000_000_000, intangibleCapex: null },
+    { capex: null, intangibleCapex: 1_000_000_000 },
+  ]) {
+    const latest = enrichFinancialRecords([{ ...DEMO_RECORDS.at(-1), ...missingAccount }])[0];
+    assert.equal(latest.totalCapex, null);
+    assert.equal(latest.freeCashFlow, null);
+    assert.equal(latest.freeCashFlowMargin, null);
+    assert.equal(latest.capexCoverage, null);
+    const insights = buildCashFlowAnalysis([latest]).insights;
+    assert.ok(insights.some((item) => item.id === "capex-account-incomplete"));
+    assert.ok(!insights.some((item) => item.id === "investment-internally-funded"));
+    assert.ok(!insights.some((item) => item.id === "investment-funded-externally"));
+  }
+});
+
+test("원문에 두 취득 계정이 모두 0원으로 확인되면 FCF는 영업현금과 같다", () => {
+  const latest = enrichFinancialRecords([{ ...DEMO_RECORDS.at(-1), capex: 0, intangibleCapex: 0 }])[0];
+  assert.equal(latest.totalCapex, 0);
+  assert.equal(latest.freeCashFlow, latest.operatingCashFlow);
+  assert.equal(latest.capexCoverage, null); // 분모 0원이므로 배율은 계산하지 않는다.
+  const insights = buildCashFlowAnalysis([latest]).insights;
+  assert.ok(!insights.some((item) => item.id === "capex-account-incomplete"));
+  assert.ok(!insights.some((item) => item.id === "investment-internally-funded"));
 });
 
 test("매출보다 채권과 재고가 빠르게 늘면 이상징후를 만든다", () => {
@@ -225,7 +253,7 @@ test("고객 제출 CSV는 단위를 환산하고 자산=부채+자본을 검증
 });
 
 test("3개년 재무를 5개 경영성과 축과 검증 가설로 정리한다", () => {
-  const records = enrichFinancialRecords(DEMO_RECORDS);
+  const records = enrichFinancialRecords(DEMO_RECORDS.map((row) => ({ ...row, intangibleCapex: 0 })));
   const performance = buildPerformanceAnalysis(records, []);
   assert.deepEqual(performance.dimensions.map((item) => item.id), ["profitability", "growth", "stability", "activity", "cash"]);
   assert.ok(performance.hypotheses.some((item) => item.id === "growth-quality"));

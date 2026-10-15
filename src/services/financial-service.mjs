@@ -35,7 +35,11 @@ export function enrichFinancialRecords(records) {
     const dpo = days(averagePayables, row.costOfSales);
     const tangibleCapex = Number.isFinite(row.capex) ? Math.abs(row.capex) : null;
     const intangibleCapex = Number.isFinite(row.intangibleCapex) ? Math.abs(row.intangibleCapex) : null;
-    const totalCapex = [tangibleCapex, intangibleCapex].filter(Number.isFinite).reduce((sum, value) => sum + value, 0) || null;
+    // A missing acquisition line is not a disclosed zero. Both components must be
+    // present before CAPEX, FCF, or investment coverage can be calculated.
+    const totalCapex = Number.isFinite(tangibleCapex) && Number.isFinite(intangibleCapex)
+      ? tangibleCapex + intangibleCapex
+      : null;
     const freeCashFlow = Number.isFinite(row.operatingCashFlow) && Number.isFinite(totalCapex) ? row.operatingCashFlow - totalCapex : null;
     const leasePrincipal = Number.isFinite(row.leasePrincipalPayments) ? Math.abs(row.leasePrincipalPayments) : null;
     const dividendsPaid = Number.isFinite(row.dividendsPaid) ? Math.abs(row.dividendsPaid) : null;
@@ -45,6 +49,9 @@ export function enrichFinancialRecords(records) {
     const leaseLiabilities = [row.currentLeaseLiabilities, row.noncurrentLeaseLiabilities].filter(Number.isFinite).reduce((sum, value) => sum + value, 0) || null;
     const adjustedDebt = Number.isFinite(totalDebt) && Number.isFinite(leaseLiabilities) ? totalDebt + leaseLiabilities : null;
     const financeCosts = Number.isFinite(row.financeCosts) ? row.financeCosts : row.interestExpense;
+    const financeCostsSource = Number.isFinite(row.financeCosts)
+      ? "포괄손익계산서 금융비용"
+      : Number.isFinite(row.interestExpense) ? "이자비용 대체값" : null;
     const shortTermDebtShare = Number.isFinite(totalDebt) && totalDebt !== 0 ? ratio(row.shortTermDebt, totalDebt) : null;
     const longTermDebtShare = Number.isFinite(totalDebt) && totalDebt !== 0 ? ratio(row.longTermDebt, totalDebt) : null;
     const debtShareUnavailableReason = !Number.isFinite(row.shortTermDebt) && !Number.isFinite(row.longTermDebt)
@@ -62,6 +69,7 @@ export function enrichFinancialRecords(records) {
       ...row,
       totalDebt,
       financeCosts,
+      financeCostsSource,
       leaseLiabilities,
       adjustedDebt,
       shortTermDebtShare,
@@ -106,9 +114,9 @@ export function enrichFinancialRecords(records) {
       balanceSheetValid: Number.isFinite(balanceSheetGap) && Number.isFinite(balanceSheetTolerance) ? Math.abs(balanceSheetGap) <= balanceSheetTolerance : null,
       metricBasis: {
         statement: row.fsDiv === "OFS" ? "별도재무제표(차주 법인)" : "연결재무제표(그룹)",
-        financeCost: row.interestExpenseBasis || "공시 금융비용",
+        financeCost: financeCostsSource || "금융비용 계정 확인 필요",
         workingCapital: `${previous ? "기초·기말 평균잔액" : "기말잔액 근사"} · ${row.workingCapitalAccountScope || "공시 본문 계정"}`,
-        fcf: "영업활동현금흐름 - 유형·무형자산 취득",
+        fcf: "영업활동현금흐름 - 유형·무형자산 취득(두 취득 계정 모두 확인 시 계산)",
         debt: "단기·장기차입금 및 사채 합계(리스부채 별도)",
       },
     };
@@ -126,12 +134,18 @@ export function buildCashFlowAnalysis(records) {
       "본업에서 빠져나간 현금을 차입·증자 등 재무활동 유입으로 메웠을 가능성이 있습니다.",
       ["재무활동현금흐름 세부내역", "신규 차입과 상환 내역", "월별 영업자금수지"]);
   }
-  if (latest.operatingCashFlow > 0 && latest.investingCashFlow < 0 && latest.freeCashFlow < 0 && latest.financingCashFlow > 0) {
+  if (Number.isFinite(latest.operatingCashFlow) && !Number.isFinite(latest.totalCapex)) {
+    add("capex-account-incomplete", "watch", "유형·무형자산 취득 계정 대조 필요",
+      "유형·무형자산 취득 중 일부 금액 미확인",
+      "확인되지 않은 취득액을 0원으로 간주하지 않아 CAPEX·단순 FCF와 투자흡수력을 계산하지 않았습니다.",
+      ["유형자산 취득 원계정", "무형자산 취득 원계정", "취득액이 0원인 경우 원문 근거"]);
+  }
+  if (latest.operatingCashFlow > 0 && latest.investingCashFlow < 0 && Number.isFinite(latest.freeCashFlow) && latest.freeCashFlow < 0 && latest.financingCashFlow > 0) {
     add("investment-funded-externally", "warning", "투자 후 현금부족과 외부조달 동반",
       `FCF ${latest.freeCashFlow}원 · 재무 ${latest.financingCashFlow}원`,
       "영업현금만으로 CAPEX를 충당하지 못한 시기에 재무활동 현금이 유입됐습니다. 성장투자인지 자금공백 보전인지 구분해야 합니다.",
       ["CAPEX 계약·집행내역", "투자성과와 회수기간", "차입금 사용처"]);
-  } else if (latest.operatingCashFlow > 0 && latest.investingCashFlow < 0 && latest.freeCashFlow >= 0) {
+  } else if (latest.operatingCashFlow > 0 && latest.investingCashFlow < 0 && latest.totalCapex > 0 && Number.isFinite(latest.freeCashFlow) && latest.freeCashFlow >= 0) {
     add("investment-internally-funded", "positive", "영업현금 범위 내 투자 집행",
       `FCF ${latest.freeCashFlow}원 · CFO/CAPEX ${latest.capexCoverage}배`,
       "영업에서 창출한 현금으로 CAPEX를 충당하고도 잉여현금이 남은 구조입니다.",
